@@ -28,8 +28,8 @@ export default function AdminDashboard() {
         if (error) throw error;
 
         const allCars = cars || [];
-        const available = allCars.filter((c) => c.is_available).length;
-        const totalValue = allCars.reduce((sum, c) => sum + (c.price || 0), 0);
+        const available = allCars.filter((c: Car) => c.is_available).length;
+        const totalValue = allCars.reduce((sum: number, c: Car) => sum + (c.price || 0), 0);
 
         setStats({
           totalProperties: allCars.length,

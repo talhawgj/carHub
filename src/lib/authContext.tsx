@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getSupabaseClient } from './supabase';
 import type { AdminUser } from '@/types';
+import type { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: AdminUser | null;
@@ -39,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const supabase = getSupabaseClient();
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (_event: string, session: Session | null) => {
         if (session?.user) {
           setUser({
             id: session.user.id,
