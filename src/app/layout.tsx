@@ -17,7 +17,11 @@ export const metadata: Metadata = {
   title: "carHub - Find Your Perfect Car | Premium Auto Dealership",
   description: "Discover premium vehicles at carHub. Browse our extensive inventory of new and pre-owned cars with detailed specs, pricing, and comparison tools.",
   icons: {
-    icon: "/favicon.svg",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", type: "image/x-icon" },
+    ],
+    apple: "/favicon.svg",
   },
 };
 
