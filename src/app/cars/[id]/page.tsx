@@ -74,12 +74,17 @@ export default function CarDetailPage() {
 
     try {
       const supabase = getSupabaseClient();
+      const subject = car
+        ? `Inquiry about ${car.year} ${car.make} ${car.model}`
+        : 'Vehicle inquiry';
+
       const { error } = await supabase.from('contact_inquiries').insert([
         {
           car_id: carId,
           name: contactForm.name,
           email: contactForm.email,
           phone: contactForm.phone,
+          subject,
           message: contactForm.message,
         },
       ]);

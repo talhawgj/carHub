@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeCarsFromDb, normalizeCarFromDb, toCarDbPayload } from '@/lib/carTransform';
 import { supabaseServer } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const dbPayload = toCarDbPayload(body);
+    const dbPayload = toCarDbPayload(body) as Database['public']['Tables']['cars']['Insert'];
 
     const { data, error } = await supabase
       .from('cars')

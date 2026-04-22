@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { normalizeCarsFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Car } from '@/types';
 
@@ -27,9 +28,9 @@ export default function AdminDashboard() {
 
         if (error) throw error;
 
-        const allCars = cars || [];
-        const available = allCars.filter((c: Car) => c.is_available).length;
-        const totalValue = allCars.reduce((sum: number, c: Car) => sum + (c.price || 0), 0);
+        const allCars = normalizeCarsFromDb(cars);
+        const available = allCars.filter((c) => c.is_available).length;
+        const totalValue = allCars.reduce((sum, c) => sum + (c.price || 0), 0);
 
         setStats({
           totalProperties: allCars.length,

@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/authContext';
 import { toCarDbPayload } from '@/lib/carTransform';
 import GalleryManager from './GalleryManager';
 import type { Car, CarSpecs } from '@/types';
+import type { Database } from '@/types/supabase';
 
 interface PropertyFormProps {
   initialData?: Car;
@@ -129,10 +130,12 @@ export default function PropertyForm({
       const dbPayload = toCarDbPayload(payload);
 
       if (isEditing && initialData?.id) {
+        const updatePayload = dbPayload as Database['public']['Tables']['cars']['Update'];
+
         // Update existing
         const { error: updateError } = await supabase
           .from('cars')
-          .update(dbPayload)
+          .update(updatePayload)
           .eq('id', initialData.id);
 
         if (updateError) throw updateError;
@@ -142,10 +145,15 @@ export default function PropertyForm({
           throw new Error('You must be logged in to create a car listing');
         }
 
+        const insertPayload = {
+          ...dbPayload,
+          seller_id: user.id,
+        } as Database['public']['Tables']['cars']['Insert'];
+
         // Create new
         const { error: insertError } = await supabase
           .from('cars')
-          .insert([{ ...dbPayload, seller_id: user.id }]);
+          .insert([insertPayload]);
 
         if (insertError) throw insertError;
         router.push('/admin/properties');

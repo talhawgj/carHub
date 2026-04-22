@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { normalizeCarFromDb, normalizeCarsFromDb, toCarDbPayload } from '@/lib/carTransform';
 import { Car } from '@/types';
+import type { Database } from '@/types/supabase';
 
 type CarSearchFilters = {
   make?: string;
@@ -78,7 +79,7 @@ export const carService = {
 
   // Create new car listing
   async createCar(car: Omit<Car, 'id' | 'created_at' | 'updated_at'>): Promise<Car> {
-    const dbPayload = toCarDbPayload(car);
+    const dbPayload = toCarDbPayload(car) as Database['public']['Tables']['cars']['Insert'];
 
     const { data, error } = await supabase.instance
       .from('cars')
@@ -92,7 +93,7 @@ export const carService = {
 
   // Update car listing
   async updateCar(id: string, updates: Partial<Car>): Promise<Car> {
-    const dbPayload = toCarDbPayload(updates);
+    const dbPayload = toCarDbPayload(updates) as Database['public']['Tables']['cars']['Update'];
 
     const { data, error } = await supabase.instance
       .from('cars')

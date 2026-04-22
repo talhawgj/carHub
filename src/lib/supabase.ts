@@ -1,10 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/supabase';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 declare global {
-  var __supabaseClient: ReturnType<typeof createClient> | undefined;
+  var __supabaseClient: SupabaseClient<Database> | undefined;
 }
 
 // Create a dummy client if env vars are missing (for build time)
@@ -13,7 +14,7 @@ const getDummyClient = () => ({
   auth: {},
   storage: {},
   rpc: () => ({}),
-}) as unknown as ReturnType<typeof createClient>;
+}) as unknown as SupabaseClient<Database>;
 
 // Get client-side Supabase instance
 export const getSupabaseClient = () => {
@@ -26,7 +27,7 @@ export const getSupabaseClient = () => {
   }
 
   if (!globalThis.__supabaseClient) {
-    globalThis.__supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    globalThis.__supabaseClient = createClient<Database>(supabaseUrl, supabaseAnonKey);
   }
 
   return globalThis.__supabaseClient;
@@ -41,11 +42,11 @@ export const getSupabaseServer = () => {
     throw new Error('Missing Supabase environment variables');
   }
   
-  return createClient(url, key);
+  return createClient<Database>(url, key);
 };
 
 // Lazy-initialized client instance
-let clientInstance: ReturnType<typeof createClient> | null = null;
+let clientInstance: SupabaseClient<Database> | null = null;
 
 export const supabase = {
   get instance() {
