@@ -1,5 +1,14 @@
 import { supabase } from '@/lib/supabase';
+import { normalizeCarFromDb, normalizeCarsFromDb, toCarDbPayload } from '@/lib/carTransform';
 import { Car } from '@/types';
+
+type CarSearchFilters = {
+  make?: string;
+  model?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  fuelType?: string;
+};
 
 export const carService = {
   // Get all available cars
@@ -12,7 +21,7 @@ export const carService = {
       .range(offset, offset + limit - 1);
 
     if (error) throw error;
-    return data || [];
+    return normalizeCarsFromDb(data);
   },
 
   // Get single car by ID
@@ -24,7 +33,7 @@ export const carService = {
       .single();
 
     if (error && error.code !== 'PGRST116') throw error;
-    return data;
+    return data ? normalizeCarFromDb(data) : null;
   },
 
   // Get cars by seller
@@ -36,11 +45,11 @@ export const carService = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    return normalizeCarsFromDb(data);
   },
 
   // Search cars
-  async searchCars(query: string, filters?: Record<string, any>): Promise<Car[]> {
+  async searchCars(query: string, filters?: CarSearchFilters): Promise<Car[]> {
     let queryBuilder = supabase.instance
       .from('cars')
       .select('*')
@@ -59,37 +68,41 @@ export const carService = {
       queryBuilder = queryBuilder.lte('price', filters.maxPrice);
     }
     if (filters?.fuelType) {
-      queryBuilder = queryBuilder.eq('fuelType', filters.fuelType);
+      queryBuilder = queryBuilder.eq('fuel_type', filters.fuelType);
     }
 
     const { data, error } = await queryBuilder;
     if (error) throw error;
-    return data || [];
+    return normalizeCarsFromDb(data);
   },
 
   // Create new car listing
   async createCar(car: Omit<Car, 'id' | 'created_at' | 'updated_at'>): Promise<Car> {
+    const dbPayload = toCarDbPayload(car);
+
     const { data, error } = await supabase.instance
       .from('cars')
-      .insert([car])
+      .insert([dbPayload])
       .select()
       .single();
 
     if (error) throw error;
-    return data;
+    return normalizeCarFromDb(data);
   },
 
   // Update car listing
   async updateCar(id: string, updates: Partial<Car>): Promise<Car> {
+    const dbPayload = toCarDbPayload(updates);
+
     const { data, error } = await supabase.instance
       .from('cars')
-      .update(updates)
+      .update(dbPayload)
       .eq('id', id)
       .select()
       .single();
 
     if (error) throw error;
-    return data;
+    return normalizeCarFromDb(data);
   },
 
   // Delete car listing

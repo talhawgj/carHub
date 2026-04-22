@@ -3,13 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+declare global {
+  var __supabaseClient: ReturnType<typeof createClient> | undefined;
+}
+
 // Create a dummy client if env vars are missing (for build time)
 const getDummyClient = () => ({
-  from: () => ({ select: () => ({} as any) }),
+  from: () => ({ select: () => ({}) }),
   auth: {},
   storage: {},
   rpc: () => ({}),
-} as any);
+}) as unknown as ReturnType<typeof createClient>;
 
 // Get client-side Supabase instance
 export const getSupabaseClient = () => {
@@ -20,7 +24,12 @@ export const getSupabaseClient = () => {
     }
     throw new Error('Missing Supabase environment variables');
   }
-  return createClient(supabaseUrl, supabaseAnonKey);
+
+  if (!globalThis.__supabaseClient) {
+    globalThis.__supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+  }
+
+  return globalThis.__supabaseClient;
 };
 
 // Get server-side Supabase instance  
@@ -36,7 +45,7 @@ export const getSupabaseServer = () => {
 };
 
 // Lazy-initialized client instance
-let clientInstance: any = null;
+let clientInstance: ReturnType<typeof createClient> | null = null;
 
 export const supabase = {
   get instance() {

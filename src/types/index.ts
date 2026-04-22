@@ -10,6 +10,7 @@ export interface Car {
   category?: 'sedan' | 'suv' | 'truck' | 'coupe' | 'convertible' | 'van' | 'hatchback' | 'wagon';
   condition: 'new' | 'used' | 'refurbished';
   fuelType: 'gasoline' | 'diesel' | 'hybrid' | 'electric';
+  fuel_type?: 'gasoline' | 'diesel' | 'hybrid' | 'electric';
   transmission: 'manual' | 'automatic';
   color: string;
   tags?: string[]; // 'Featured', 'On Sale', 'New Arrival', etc.

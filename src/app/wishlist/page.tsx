@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { normalizeCarsFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Car } from '@/types';
 
@@ -27,7 +28,7 @@ export default function WishlistPage() {
           .in('id', wishlistIds);
 
         if (error) throw error;
-        setWishlistCars(data || []);
+        setWishlistCars(normalizeCarsFromDb(data));
       } catch (err) {
         console.error('Error fetching wishlist cars:', err);
       } finally {

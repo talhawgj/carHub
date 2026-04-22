@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { normalizeCarFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Car } from '@/types';
 
@@ -38,7 +39,7 @@ export default function CarDetailPage() {
           .single();
 
         if (fetchError) throw fetchError;
-        setCar(data);
+        setCar(normalizeCarFromDb(data));
       } catch (err) {
         console.error('Error fetching car:', err);
         setError('Car not found');

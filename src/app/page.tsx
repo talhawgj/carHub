@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { normalizeCarsFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Car } from '@/types';
 
@@ -24,7 +25,7 @@ export default function Home() {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setFeaturedCars(data || []);
+        setFeaturedCars(normalizeCarsFromDb(data));
       } catch (err) {
         console.error('Error fetching featured cars:', err);
       } finally {

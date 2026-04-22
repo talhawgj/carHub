@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { normalizeCarFromDb, toCarDbPayload } from '@/lib/carTransform';
 import { supabaseServer } from '@/lib/supabase';
 
 export async function GET(
@@ -22,7 +23,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(normalizeCarFromDb(data));
   } catch (error) {
     return NextResponse.json(
       { error: 'Internal server error' },
@@ -40,9 +41,11 @@ export async function PUT(
     const supabase = supabaseServer();
     const body = await request.json();
 
+    const dbPayload = toCarDbPayload(body);
+
     const { data, error } = await supabase
       .from('cars')
-      .update(body)
+      .update(dbPayload)
       .eq('id', id)
       .select()
       .single();
@@ -51,7 +54,7 @@ export async function PUT(
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json(normalizeCarFromDb(data));
   } catch (error) {
     return NextResponse.json(
       { error: 'Internal server error' },

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseClient } from '@/lib/supabase';
+import { useAuth } from '@/lib/authContext';
+import { toCarDbPayload } from '@/lib/carTransform';
 import GalleryManager from './GalleryManager';
 import type { Car, CarSpecs } from '@/types';
 
@@ -28,7 +30,7 @@ export default function PropertyForm({
     mileage: initialData?.mileage || 0,
     category: initialData?.category || 'sedan',
     condition: initialData?.condition || 'used',
-    fuelType: initialData?.fuelType || 'gasoline',
+    fuelType: initialData?.fuelType || initialData?.fuel_type || 'gasoline',
     transmission: initialData?.transmission || 'automatic',
     color: initialData?.color || '',
     tags: initialData?.tags || [],
@@ -42,20 +44,24 @@ export default function PropertyForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const { user } = useAuth();
 
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
-    const { name, value, type } = e.target as any;
+    const target = e.target;
+    const { name, value } = target;
+    const isCheckbox = target instanceof HTMLInputElement && target.type === 'checkbox';
+
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+      [name]: isCheckbox ? target.checked : value,
     }));
   };
 
-  const handleSpecChange = (key: keyof CarSpecs, value: any) => {
+  const handleSpecChange = (key: keyof CarSpecs, value: CarSpecs[keyof CarSpecs]) => {
     setSpecs((prev) => ({
       ...prev,
       [key]: value,
@@ -85,7 +91,7 @@ export default function PropertyForm({
     try {
       const supabase = getSupabaseClient();
 
-      let newImageUrls: string[] = [];
+      const newImageUrls: string[] = [];
 
       // Upload new images if provided
       if (imageFiles.length > 0) {
@@ -120,27 +126,33 @@ export default function PropertyForm({
         year: parseInt(String(formData.year)),
         mileage: parseInt(String(formData.mileage)),
       };
+      const dbPayload = toCarDbPayload(payload);
 
       if (isEditing && initialData?.id) {
         // Update existing
         const { error: updateError } = await supabase
           .from('cars')
-          .update(payload)
+          .update(dbPayload)
           .eq('id', initialData.id);
 
         if (updateError) throw updateError;
         router.push('/admin/properties');
       } else {
+        if (!user?.id) {
+          throw new Error('You must be logged in to create a car listing');
+        }
+
         // Create new
         const { error: insertError } = await supabase
           .from('cars')
-          .insert([{ ...payload, seller_id: 'admin' }]);
+          .insert([{ ...dbPayload, seller_id: user.id }]);
 
         if (insertError) throw insertError;
         router.push('/admin/properties');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to save property');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to save property';
+      setError(message);
     } finally {
       setLoading(false);
     }

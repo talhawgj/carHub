@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { normalizeCarsFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Car } from '@/types';
 
@@ -39,7 +40,7 @@ export function CarsPageContent() {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setCars(data || []);
+        setCars(normalizeCarsFromDb(data));
       } catch (err) {
         console.error('Error fetching cars:', err);
       } finally {

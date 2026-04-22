@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { normalizeCarsFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
 import PropertyFilter from '@/components/PropertyFilter';
 import type { Car, FilterOptions } from '@/types';
@@ -26,8 +27,9 @@ export default function PropertiesPage() {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setProperties(data || []);
-        setFilteredProperties(data || []);
+        const normalized = normalizeCarsFromDb(data);
+        setProperties(normalized);
+        setFilteredProperties(normalized);
       } catch (error) {
         console.error('Failed to fetch properties:', error);
       } finally {

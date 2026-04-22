@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { normalizeCarFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
 import PropertyForm from '@/components/PropertyForm';
 import type { Car } from '@/types';
@@ -23,7 +24,7 @@ export default function EditPropertyPage() {
           .single();
 
         if (error) throw error;
-        setProperty(data);
+        setProperty(normalizeCarFromDb(data));
       } catch (error) {
         console.error('Failed to fetch property:', error);
       } finally {

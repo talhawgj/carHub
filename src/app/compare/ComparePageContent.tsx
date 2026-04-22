@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { normalizeCarsFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Car } from '@/types';
 
@@ -27,11 +28,12 @@ export function ComparePageContent() {
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        setAvailableCars(data || []);
+        const normalized = normalizeCarsFromDb(data);
+        setAvailableCars(normalized);
 
         // Load selected cars
         if (selectedCars.length > 0) {
-          const selected = data?.filter((car: Car) => selectedCars.includes(car.id)) || [];
+          const selected = normalized.filter((car: Car) => selectedCars.includes(car.id));
           setCars(selected);
         }
       } catch (err) {
