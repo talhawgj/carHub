@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseClient } from '@/lib/supabase';
 import { useAuth } from '@/lib/authContext';
-import { toCarDbPayload } from '@/lib/carTransform';
+import { MAX_CAR_PRICE, parseAndValidateCarPrice, toCarDbPayload } from '@/lib/carTransform';
 import GalleryManager from './GalleryManager';
 import type { Car, CarSpecs } from '@/types';
 import type { Database } from '@/types/supabase';
@@ -117,13 +117,14 @@ export default function PropertyForm({
 
       // Combine existing and new images
       const allImages = [...images, ...newImageUrls];
+      const validatedPrice = parseAndValidateCarPrice(formData.price);
 
       const payload = {
         ...formData,
         images: allImages,
         specs: specs,
         primary_image_index: primaryImageIndex,
-        price: parseFloat(String(formData.price)),
+        price: validatedPrice,
         year: parseInt(String(formData.year)),
         mileage: parseInt(String(formData.mileage)),
       };
@@ -297,6 +298,8 @@ export default function PropertyForm({
               onChange={handleChange}
               required
               step="0.01"
+              min="0"
+              max={MAX_CAR_PRICE}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none text-gray-900 bg-white"
               placeholder="0.00"
             />

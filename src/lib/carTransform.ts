@@ -1,6 +1,8 @@
 import type { Car } from '@/types';
 import type { Json } from '@/types/supabase';
 
+export const MAX_CAR_PRICE = 99_999_999.99;
+
 type CarDbPayload = Omit<Partial<Car>, 'fuelType' | 'specs'> & {
   fuel_type?: string;
   specs?: Json;
@@ -77,4 +79,22 @@ export function toCarDbPayload(car: Partial<Car>): CarDbPayload {
   }
 
   return payload;
+}
+
+export function parseAndValidateCarPrice(value: unknown): number {
+  const price = typeof value === 'number' ? value : Number(value);
+
+  if (!Number.isFinite(price)) {
+    throw new Error('Price must be a valid number');
+  }
+
+  if (price < 0) {
+    throw new Error('Price cannot be negative');
+  }
+
+  if (price > MAX_CAR_PRICE) {
+    throw new Error(`Price must be less than or equal to ${MAX_CAR_PRICE.toLocaleString()}`);
+  }
+
+  return Math.round(price * 100) / 100;
 }

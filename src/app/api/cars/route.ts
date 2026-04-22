@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { normalizeCarsFromDb, normalizeCarFromDb, toCarDbPayload } from '@/lib/carTransform';
+import { normalizeCarsFromDb, normalizeCarFromDb, parseAndValidateCarPrice, toCarDbPayload } from '@/lib/carTransform';
 import { supabaseServer } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
@@ -36,12 +36,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Validate required fields
-    if (!body.title || !body.price || !body.seller_id) {
+    if (!body.title || body.price === undefined || body.price === null || !body.seller_id) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
+
+    body.price = parseAndValidateCarPrice(body.price);
 
     const dbPayload = toCarDbPayload(body) as Database['public']['Tables']['cars']['Insert'];
 

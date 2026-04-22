@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { normalizeCarFromDb, toCarDbPayload } from '@/lib/carTransform';
+import { normalizeCarFromDb, parseAndValidateCarPrice, toCarDbPayload } from '@/lib/carTransform';
 import { supabaseServer } from '@/lib/supabase';
 import type { Database } from '@/types/supabase';
 
@@ -41,6 +41,10 @@ export async function PUT(
   try {
     const supabase = supabaseServer();
     const body = await request.json();
+
+    if (body.price !== undefined && body.price !== null) {
+      body.price = parseAndValidateCarPrice(body.price);
+    }
 
     const dbPayload = toCarDbPayload(body) as Database['public']['Tables']['cars']['Update'];
 
