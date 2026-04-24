@@ -328,58 +328,108 @@ export default function CarDetailPage() {
               </div>
             </div>
 
-            {/* Contact Form */}
+            {/* Contact Form Modal */}
             {showContactForm && (
-              <div className="bg-white rounded-lg shadow p-4 md:p-6 mt-4">
-                <h3 className="text-base md:text-lg font-bold text-gray-900 mb-4">Send Message</h3>
-                <form onSubmit={handleContactSubmit} className="space-y-2 md:space-y-3">
-                  <input
-                    type="text"
-                    placeholder="Your Name"
-                    value={contactForm.name}
-                    onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-xs md:text-sm"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Your Email"
-                    value={contactForm.email}
-                    onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-xs md:text-sm"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Your Phone"
-                    value={contactForm.phone}
-                    onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-xs md:text-sm"
-                  />
-                  <textarea
-                    placeholder="Your Message"
-                    value={contactForm.message}
-                    onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                    required
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white text-xs md:text-sm"
-                  />
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-gray-900/60 backdrop-blur-sm transition-all duration-300">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
+                  <div className="relative px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white">
+                    <h3 className="text-xl font-bold text-gray-900">Contact Seller</h3>
+                    <p className="text-sm text-gray-500 mt-1">We'll get back to you as soon as possible.</p>
+                    <button 
+                      onClick={() => setShowContactForm(false)}
+                      className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 transition-colors bg-white rounded-full p-1.5 shadow-sm hover:shadow border border-gray-100"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <div className="p-6">
+                    <form onSubmit={handleContactSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Your Name</label>
+                        <input
+                          type="text"
+                          value={contactForm.name}
+                          onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                          required
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-900 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none"
+                          placeholder="John Doe"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                        <input
+                          type="email"
+                          value={contactForm.email}
+                          onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                          required
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-900 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none"
+                          placeholder="john@example.com"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone Number <span className="text-gray-400 font-normal">(Optional)</span></label>
+                        <input
+                          type="tel"
+                          value={contactForm.phone}
+                          onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-900 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none"
+                          placeholder="+1 (555) 000-0000"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Message</label>
+                        <textarea
+                          value={contactForm.message}
+                          onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
+                          required
+                          rows={4}
+                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-900 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none resize-none"
+                          placeholder="I'm interested in this vehicle..."
+                        />
+                      </div>
 
-                  {messageStatus === 'success' && (
-                    <p className="text-green-600 text-xs md:text-sm font-medium">Message sent successfully!</p>
-                  )}
-                  {messageStatus === 'error' && (
-                    <p className="text-red-600 text-xs md:text-sm font-medium">Error sending message. Please try again.</p>
-                  )}
+                      {messageStatus === 'success' && (
+                        <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm font-medium flex items-center animate-in fade-in slide-in-from-bottom-2">
+                          <svg className="w-5 h-5 mr-2 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          Message sent successfully!
+                        </div>
+                      )}
+                      
+                      {messageStatus === 'error' && (
+                        <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm font-medium flex items-center animate-in fade-in slide-in-from-bottom-2">
+                          <svg className="w-5 h-5 mr-2 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                          Error sending message. Please try again.
+                        </div>
+                      )}
 
-                  <button
-                    type="submit"
-                    disabled={sendingMessage}
-                    className="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition disabled:bg-gray-400 text-sm md:text-base"
-                  >
-                    {sendingMessage ? 'Sending...' : 'Send Message'}
-                  </button>
-                </form>
+                      <button
+                        type="submit"
+                        disabled={sendingMessage}
+                        className="w-full relative flex items-center justify-center bg-indigo-600 text-white px-4 py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition-all duration-200 disabled:bg-indigo-400 shadow-[0_4px_14px_0_rgb(79,70,229,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.23)] hover:-translate-y-0.5 mt-4"
+                      >
+                        {sendingMessage ? (
+                          <>
+                            <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Sending...
+                          </>
+                        ) : 'Send Message'}
+                      </button>
+                    </form>
+                  </div>
+                </div>
               </div>
             )}
           </div>
