@@ -231,20 +231,20 @@ export default function CarDetailPage() {
                   )}
                   {car.specs.mpg && (
                     <div>
-                      <p className="text-xs md:text-sm text-gray-600">MPG</p>
-                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.mpg} mpg</p>
+                      <p className="text-xs md:text-sm text-gray-600">Km/L</p>
+                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.mpg} km/l</p>
                     </div>
                   )}
                   {car.specs.acceleration && (
                     <div>
-                      <p className="text-xs md:text-sm text-gray-600">Acceleration (0-60)</p>
+                      <p className="text-xs md:text-sm text-gray-600">Acceleration (0-100)</p>
                       <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.acceleration}</p>
                     </div>
                   )}
                   {car.specs.top_speed && (
                     <div>
                       <p className="text-xs md:text-sm text-gray-600">Top Speed</p>
-                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.top_speed} mph</p>
+                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.top_speed} km/h</p>
                     </div>
                   )}
                 </div>
@@ -279,7 +279,7 @@ export default function CarDetailPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 text-sm md:text-base">Mileage:</span>
-                  <span className="font-semibold text-gray-900 text-sm md:text-base">{car.mileage.toLocaleString()} mi</span>
+                  <span className="font-semibold text-gray-900 text-sm md:text-base">{car.mileage.toLocaleString()} km</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 text-sm md:text-base">Condition:</span>

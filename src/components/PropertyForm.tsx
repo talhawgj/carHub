@@ -421,7 +421,7 @@ export default function PropertyForm({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Engine Size
+              Engine Size (cc/L)
             </label>
             <input
               type="text"
@@ -475,7 +475,7 @@ export default function PropertyForm({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              MPG (Fuel Efficiency)
+              Km/L (Fuel Efficiency)
             </label>
             <input
               type="number"
@@ -491,7 +491,7 @@ export default function PropertyForm({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Acceleration (0-60)
+              Acceleration (0-100)
             </label>
             <input
               type="text"
@@ -503,7 +503,7 @@ export default function PropertyForm({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Top Speed (mph)
+              Top Speed (Km/Hr)
             </label>
             <input
               type="number"

@@ -181,7 +181,7 @@ export default function PropertiesPage() {
                   </span>
                   {property.mileage && (
                     <span className="text-sm text-gray-600">
-                      {property.mileage.toLocaleString()} miles
+                      {property.mileage.toLocaleString()} km
                     </span>
                   )}
                 </div>

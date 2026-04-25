@@ -96,7 +96,7 @@ export default function WishlistPage() {
                   <div className="grid grid-cols-3 gap-1 md:gap-2 text-xs text-gray-600 border-t pt-3 md:pt-4 mb-3 md:mb-4">
                     <div className="text-center">
                       <div className="font-semibold text-gray-900 text-xs md:text-sm">{(car.mileage / 1000).toFixed(0)}k</div>
-                      <div className="text-xs">Miles</div>
+                      <div className="text-xs">Km</div>
                     </div>
                     <div className="text-center">
                       <div className="font-semibold text-gray-900 text-xs md:text-sm">{car.fuelType}</div>
