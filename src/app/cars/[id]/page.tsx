@@ -257,7 +257,7 @@ export default function CarDetailPage() {
             {/* Price & Details */}
             <div className="bg-white rounded-lg shadow p-4 md:p-6 sticky top-24">
               <p className="text-3xl md:text-4xl font-bold text-indigo-600 mb-4">
-                ${car.price.toLocaleString()}
+                Rs. {car.price.toLocaleString()}
               </p>
 
               <div className="space-y-2 md:space-y-3 mb-4 md:mb-6 pb-4 md:pb-6 border-b">

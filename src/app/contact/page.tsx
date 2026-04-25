@@ -86,7 +86,7 @@ export default function ContactPage() {
 
           <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <h3 className="text-base md:text-lg font-bold text-gray-900 mb-3 md:mb-4">📍 Visit Us</h3>
-            <p className="text-gray-600 text-xs md:text-sm">CarHub Dealership</p>
+            <p className="text-gray-600 text-xs md:text-sm">Chaudhary Motors Dealership</p>
             <p className="text-gray-600 text-xs md:text-sm">123 Main Street</p>
             <p className="text-gray-600 text-xs md:text-sm">New York, NY 10001</p>
           </div>
@@ -94,9 +94,9 @@ export default function ContactPage() {
           <div className="bg-white rounded-lg shadow p-4 md:p-6">
             <h3 className="text-base md:text-lg font-bold text-gray-900 mb-3 md:mb-4">✉️ Email Us</h3>
             <p className="text-gray-600 text-xs md:text-sm mb-1">General inquiries:</p>
-            <p className="text-indigo-600 font-semibold text-xs md:text-sm mb-2 md:mb-4">info@carhub.com</p>
+            <p className="text-indigo-600 font-semibold text-xs md:text-sm mb-2 md:mb-4">info@chaudharymotors.pk</p>
             <p className="text-gray-600 text-xs md:text-sm mb-1">Sales:</p>
-            <p className="text-indigo-600 font-semibold text-xs md:text-sm">sales@carhub.com</p>
+            <p className="text-indigo-600 font-semibold text-xs md:text-sm">sales@chaudharymotors.pk</p>
           </div>
         </div>
 

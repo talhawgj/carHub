@@ -44,7 +44,7 @@ export default function Home() {
           <div className="flex justify-between items-center h-16">
             <Link href="/" className="flex items-center gap-2 flex-shrink-0">
               <div className="w-8 h-8 bg-indigo-600 rounded-full"></div>
-              <span className="text-lg md:text-xl font-bold text-gray-900">CarHub</span>
+              <span className="text-lg md:text-xl font-bold text-gray-900">Chaudhary Motors</span>
             </Link>
             
             {/* Desktop Menu */}
@@ -181,7 +181,7 @@ export default function Home() {
                       <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4 line-clamp-2">{car.description}</p>
                       <div className="flex items-center justify-between mb-3 md:mb-4">
                         <span className="text-lg md:text-2xl font-bold text-indigo-600">
-                          ${car.price.toLocaleString()}
+                          Rs. {car.price.toLocaleString()}
                         </span>
                         <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
                           {car.condition}
@@ -262,7 +262,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-8">
             <div>
-              <h3 className="text-white font-bold mb-3 md:mb-4">CarHub</h3>
+              <h3 className="text-white font-bold mb-3 md:mb-4">Chaudhary Motors</h3>
               <p className="text-xs md:text-sm">Your trusted source for quality vehicles</p>
             </div>
             <div>
@@ -288,7 +288,7 @@ export default function Home() {
             </div>
           </div>
           <div className="border-t border-gray-800 pt-6 md:pt-8 text-center text-xs md:text-sm">
-            <p>&copy; 2026 CarHub. All rights reserved.</p>
+            <p>&copy; 2026 Chaudhary Motors. All rights reserved.</p>
           </div>
         </div>
       </footer>

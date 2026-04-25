@@ -65,7 +65,7 @@ export default function AdminLayout({
             <div className="text-2xl">🏢</div>
             {sidebarOpen && (
               <div>
-                <h1 className="font-bold text-lg">CarHub</h1>
+                <h1 className="font-bold text-lg">Chaudhary Motors</h1>
                 <p className="text-xs text-indigo-200">Admin Panel</p>
               </div>
             )}

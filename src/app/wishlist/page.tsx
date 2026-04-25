@@ -87,7 +87,7 @@ export default function WishlistPage() {
                   <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4 line-clamp-2">{car.description}</p>
                   <div className="flex items-center justify-between mb-3 md:mb-4">
                     <span className="text-lg md:text-2xl font-bold text-indigo-600">
-                      ${car.price.toLocaleString()}
+                      Rs. {car.price.toLocaleString()}
                     </span>
                     <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
                       {car.condition}

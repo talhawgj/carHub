@@ -46,7 +46,7 @@ export function CarCard({ car }: CarCardProps) {
         {/* Price */}
         <div className="flex items-center justify-between pt-4 border-t">
           <span className="text-2xl font-bold text-blue-600">
-            ${car.price.toLocaleString()}
+            Rs. {car.price.toLocaleString()}
           </span>
           <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
             View Details

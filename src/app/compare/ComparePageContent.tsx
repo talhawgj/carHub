@@ -100,7 +100,7 @@ export function ComparePageContent() {
                     <h3 className="font-bold text-gray-900 text-xs md:text-base">
                       {car.year} {car.make} {car.model}
                     </h3>
-                    <p className="text-xs md:text-sm text-gray-600">${car.price.toLocaleString()}</p>
+                    <p className="text-xs md:text-sm text-gray-600">Rs. {car.price.toLocaleString()}</p>
                     {selectedCars.includes(car.id) && (
                       <span className="text-xs text-indigo-600 font-semibold">✓ Selected</span>
                     )}
@@ -147,7 +147,7 @@ export function ComparePageContent() {
                   <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Price</td>
                   {cars.map((car) => (
                     <td key={car.id} className="p-3 md:p-4 text-lg md:text-2xl font-bold text-indigo-600">
-                      ${car.price.toLocaleString()}
+                      Rs. {car.price.toLocaleString()}
                     </td>
                   ))}
                 </tr>

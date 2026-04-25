@@ -177,7 +177,7 @@ export default function PropertiesPage() {
 
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-bold text-indigo-600">
-                    ${property.price.toLocaleString()}
+                    Rs. {property.price.toLocaleString()}
                   </span>
                   {property.mileage && (
                     <span className="text-sm text-gray-600">

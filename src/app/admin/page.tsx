@@ -94,7 +94,7 @@ export default function AdminDashboard() {
             <div>
               <p className="text-gray-600 text-sm font-medium">Total Value</p>
               <p className="text-3xl font-bold text-indigo-600 mt-1">
-                ${(stats.totalValue / 1000).toFixed(0)}k
+                Rs. {(stats.totalValue / 1000).toFixed(0)}k
               </p>
             </div>
             <div className="text-4xl">💰</div>
@@ -121,7 +121,7 @@ export default function AdminDashboard() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-gray-900">${property.price.toLocaleString()}</p>
+                  <p className="font-bold text-gray-900">Rs. {property.price.toLocaleString()}</p>
                   <p className="text-xs text-gray-600">
                     {property.is_available ? '✅ Available' : '❌ Sold'}
                   </p>
