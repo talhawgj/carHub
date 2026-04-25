@@ -124,16 +124,16 @@ export default function PropertiesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Properties</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Vehicles</h1>
           <p className="text-gray-600 mt-1">
-            {filteredProperties.length} of {properties.length} properties
+            {filteredProperties.length} of {properties.length} vehicles
           </p>
         </div>
         <Link
           href="/admin/properties/new"
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg transition"
         >
-          ➕ Add Property
+          ➕ Add Vehicle
         </Link>
       </div>
 

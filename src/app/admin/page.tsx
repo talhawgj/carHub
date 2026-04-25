@@ -60,7 +60,7 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Welcome to your property management portal</p>
+        <p className="text-gray-600 mt-1">Welcome to Vehicle Management System</p>
       </div>
 
       {/* Stats Grid */}
@@ -68,12 +68,12 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm font-medium">Total Properties</p>
+              <p className="text-gray-600 text-sm font-medium">Total Vehicles</p>
               <p className="text-3xl font-bold text-gray-900 mt-1">
                 {stats.totalProperties}
               </p>
             </div>
-            <div className="text-4xl">🏠</div>
+            <div className="text-4xl">🚗</div>
           </div>
         </div>
 
@@ -102,11 +102,11 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Recent Properties */}
+      {/* Recent Vehicles */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Properties</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Vehicles</h2>
         {stats.recentProperties.length === 0 ? (
-          <p className="text-gray-600">No properties yet</p>
+          <p className="text-gray-600">No Vehicles yet</p>
         ) : (
           <div className="space-y-3">
             {stats.recentProperties.map((property) => (

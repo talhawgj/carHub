@@ -46,23 +46,22 @@ export default function AdminLayout({
   }
 
   const navItems = [
-    { href: '/admin', label: 'Dashboard', icon: '📊' },
-    { href: '/admin/properties', label: 'View all cars', icon: '🏠' },
-    { href: '/admin/properties/new', label: 'New car', icon: '➕' },
+    { href: '/admin', label: 'Dashboard', icon: '🚗' },
+    { href: '/admin/properties', label: 'View all Vehicles', icon: '🚗' },
+    { href: '/admin/properties/new', label: 'Add New Vehicle', icon: '➕' },
   ];
 
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
       <div
-        className={`${
-          sidebarOpen ? 'w-64' : 'w-20'
-        } bg-indigo-700 text-white transition-all duration-300 flex flex-col`}
+        className={`${sidebarOpen ? 'w-64' : 'w-20'
+          } bg-indigo-700 text-white transition-all duration-300 flex flex-col`}
       >
         {/* Header */}
         <div className="p-4 border-b border-indigo-600">
           <div className="flex items-center gap-3">
-            <div className="text-2xl">🏢</div>
+            <div className="text-2xl">🚗</div>
             {sidebarOpen && (
               <div>
                 <h1 className="font-bold text-lg">Chaudhary Motors</h1>
