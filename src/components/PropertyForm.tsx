@@ -391,8 +391,8 @@ export default function PropertyForm({
                 type="button"
                 onClick={() => handleTagToggle(tag)}
                 className={`px-4 py-2 rounded-lg font-medium text-sm transition ${formData.tags.includes(tag)
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                   }`}
               >
                 {tag}
@@ -559,7 +559,7 @@ export default function PropertyForm({
             className="w-4 h-4 rounded border-gray-300"
           />
           <label htmlFor="is_available" className="text-sm font-medium text-gray-700">
-            Property is available for sale
+            Vehicle is available for sale
           </label>
         </div>
       </div>
@@ -574,8 +574,8 @@ export default function PropertyForm({
           {loading
             ? 'Saving...'
             : isEditing
-              ? 'Update Property'
-              : 'Create Property'}
+              ? 'Update Vehicle'
+              : 'Create Vehicle'}
         </button>
         <button
           type="button"
