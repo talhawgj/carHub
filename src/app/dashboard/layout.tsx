@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/authContext';
 import Link from 'next/link';
 
-export default function AdminLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -17,14 +17,14 @@ export default function AdminLayout({
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/admin-login');
+      router.push('/login');
     }
   }, [user, loading, router]);
 
   const handleLogout = async () => {
     try {
       await signOut();
-      router.push('/admin-login');
+      router.push('/login');
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -34,7 +34,7 @@ export default function AdminLayout({
     return (
       <div className="flex items-center justify-center h-screen bg-gray-100">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
           <p className="text-gray-600 mt-4">Loading...</p>
         </div>
       </div>
@@ -46,8 +46,8 @@ export default function AdminLayout({
   }
 
   const navItems = [
-    { href: '/admin', label: 'Platform Overview', icon: '📊' },
-    { href: '/admin/inspections', label: 'Pending Inspections', icon: '📋' },
+    { href: '/dashboard', label: 'My Garage', icon: '🚗' },
+    { href: '/sell-your-car', label: 'List a Car', icon: '➕' },
   ];
 
   return (
@@ -55,16 +55,16 @@ export default function AdminLayout({
       {/* Sidebar */}
       <div
         className={`${sidebarOpen ? 'w-64' : 'w-20'
-          } bg-gray-900 text-white transition-all duration-300 flex flex-col`}
+          } bg-[#1b3a6b] text-white transition-all duration-300 flex flex-col`}
       >
         {/* Header */}
-        <div className="p-4 border-b border-gray-800">
+        <div className="p-4 border-b border-indigo-800">
           <div className="flex items-center gap-3">
             <Link href="/" className="text-2xl hover:opacity-80">🏠</Link>
             {sidebarOpen && (
               <div>
                 <h1 className="font-bold text-lg">CarMandi</h1>
-                <p className="text-xs text-gray-400">Admin Portal</p>
+                <p className="text-xs text-orange-400">User Dashboard</p>
               </div>
             )}
           </div>
@@ -76,7 +76,7 @@ export default function AdminLayout({
             <Link
               key={item.href}
               href={item.href}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors text-sm"
+              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-indigo-800 transition-colors text-sm"
               title={item.label}
             >
               <span className="text-lg">{item.icon}</span>
@@ -86,13 +86,13 @@ export default function AdminLayout({
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-800 space-y-2">
+        <div className="p-4 border-t border-indigo-800 space-y-2">
           {sidebarOpen && (
-            <p className="text-xs text-gray-400 truncate">{user.email}</p>
+            <p className="text-xs text-indigo-200 truncate">{user.user_metadata?.phone || user.email}</p>
           )}
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm text-red-400"
+            className="w-full flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-indigo-800 transition-colors text-sm"
           >
             <span>🚪</span>
             {sidebarOpen && <span>Logout</span>}
@@ -103,7 +103,7 @@ export default function AdminLayout({
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm z-10">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="text-gray-600 hover:text-gray-900 text-2xl"
@@ -111,8 +111,8 @@ export default function AdminLayout({
           >
             ☰
           </button>
-          <div className="text-gray-600 text-sm">
-            Welcome back! 👋
+          <div className="text-gray-600 text-sm font-medium">
+            Welcome back, {user.user_metadata?.full_name || 'User'}! 👋
           </div>
         </div>
 

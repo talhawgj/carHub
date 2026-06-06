@@ -6,6 +6,60 @@ import { normalizeCarsFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Car } from '@/types';
 
+function CarCard({ car, onRemove }: { car: Car, onRemove: (id: string) => void }) {
+  const img = car.images?.[car.primary_image_index || 0];
+  
+  return (
+    <Link href={`/cars/${car.id}`} style={{ display: 'block', textDecoration: 'none' }}>
+      <div className="car-card" style={{ height: '100%' }}>
+        {/* Image */}
+        <div style={{ position: 'relative', height: 185, background: '#e5e7eb', overflow: 'hidden' }}>
+          {img ? (
+            <img src={img} alt={`${car.year} ${car.make} ${car.model}`} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform .4s' }}
+              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
+              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', color: '#9ca3af' }}>🚗</div>
+          )}
+          <div style={{ position: 'absolute', top: 8, left: 8, display: 'flex', gap: 5 }}>
+            {car.tags?.includes('Featured') && <span className="badge badge-orange">Featured</span>}
+          </div>
+          <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(car.id); }} style={{ position: 'absolute', top: 8, right: 8, width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,.95)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '.9rem', boxShadow: '0 2px 6px rgba(0,0,0,.15)', color: '#dc2626' }}>
+            🗑️
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '12px 14px 14px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ fontWeight: 700, fontSize: '.95rem', color: '#111827', marginBottom: 6 }}>
+            {car.year} {car.make} {car.model}
+          </h3>
+          {/* Specs row */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 10, padding: '6px 0', borderTop: '1px solid #f3f4f6', borderBottom: '1px solid #f3f4f6' }}>
+            <div style={{ fontSize: '.72rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>
+              📏 {car.mileage ? `${(car.mileage/1000).toFixed(0)}k km` : '—'}
+            </div>
+            <div style={{ fontSize: '.72rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>
+              ⛽ {car.fuelType || '—'}
+            </div>
+            <div style={{ fontSize: '.72rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: 3 }}>
+              ⚙️ {car.transmission?.charAt(0).toUpperCase()}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#1b3a6b' }}>
+              Rs. {car.price.toLocaleString()}
+            </span>
+            <span style={{ fontSize: '.72rem', background: '#f3f4f6', color: '#374151', padding: '2px 8px', borderRadius: 999, fontWeight: 600, textTransform: 'capitalize' }}>
+              {car.condition}
+            </span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function WishlistPage() {
   const [wishlistCars, setWishlistCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,91 +101,37 @@ export default function WishlistPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', background: '#f5f7fa', paddingBottom: 48 }}>
       {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-          <Link href="/cars" className="text-indigo-600 hover:text-indigo-700 font-medium text-xs md:text-sm mb-4 inline-block">
+      <div style={{ background: '#1b3a6b', color: '#fff', padding: '28px 0' }}>
+        <div className="container">
+          <Link href="/cars" style={{ color: 'rgba(255,255,255,.7)', fontSize: '.85rem', display: 'inline-block', marginBottom: 12 }}>
             ← Back to Cars
           </Link>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Saved Vehicles</h1>
-          <p className="text-gray-600 mt-1 md:mt-2 text-sm md:text-base">{wishlistCars.length} vehicle(s) saved</p>
+          <h1 style={{ fontWeight: 800, fontSize: '1.6rem' }}>Saved Vehicles</h1>
+          <p style={{ color: 'rgba(255,255,255,.75)', fontSize: '.875rem', marginTop: 4 }}>
+            {loading ? 'Loading...' : `${wishlistCars.length} vehicle(s) saved`}
+          </p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+      <div className="container" style={{ paddingTop: 32 }}>
         {loading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+          <div style={{ textAlign: 'center', padding: '60px 0' }}>
+            <div className="spinner" style={{ margin: '0 auto' }} />
           </div>
         ) : wishlistCars.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 20 }}>
             {wishlistCars.map((car) => (
-              <div
-                key={car.id}
-                className="bg-white rounded-lg shadow-lg hover:shadow-xl transition overflow-hidden"
-              >
-                {car.images && car.images.length > 0 && (
-                  <div className="relative h-40 sm:h-48 bg-gray-200">
-                    <img
-                      src={car.images[car.primary_image_index || 0]}
-                      alt={`${car.year} ${car.make} ${car.model}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                )}
-                <div className="p-3 md:p-4">
-                  <h3 className="text-sm md:text-lg font-bold text-gray-900 mb-1 md:mb-2">
-                    {car.year} {car.make} {car.model}
-                  </h3>
-                  <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4 line-clamp-2">{car.description}</p>
-                  <div className="flex items-center justify-between mb-3 md:mb-4">
-                    <span className="text-lg md:text-2xl font-bold text-indigo-600">
-                      Rs. {car.price.toLocaleString()}
-                    </span>
-                    <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
-                      {car.condition}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1 md:gap-2 text-xs text-gray-600 border-t pt-3 md:pt-4 mb-3 md:mb-4">
-                    <div className="text-center">
-                      <div className="font-semibold text-gray-900 text-xs md:text-sm">{(car.mileage / 1000).toFixed(0)}k</div>
-                      <div className="text-xs">Km</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-semibold text-gray-900 text-xs md:text-sm">{car.fuelType}</div>
-                      <div className="text-xs">Fuel</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="font-semibold text-gray-900 text-xs md:text-sm">{car.transmission[0].toUpperCase()}</div>
-                      <div className="text-xs">Trans.</div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Link
-                      href={`/cars/${car.id}`}
-                      className="flex-1 bg-indigo-600 text-white px-3 md:px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition text-center text-xs md:text-sm"
-                    >
-                      View Details
-                    </Link>
-                    <button
-                      onClick={() => removeFromWishlist(car.id)}
-                      className="px-3 md:px-4 py-2 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100 transition text-xs md:text-sm whitespace-nowrap"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <CarCard key={car.id} car={car} onRemove={removeFromWishlist} />
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow p-8 md:p-12 text-center">
-            <p className="text-gray-600 text-base md:text-lg mb-4">No saved vehicles yet</p>
-            <Link
-              href="/cars"
-              className="inline-block bg-indigo-600 text-white px-6 md:px-8 py-2 md:py-3 rounded-lg font-semibold hover:bg-indigo-700 transition text-sm md:text-base"
-            >
+          <div style={{ background: '#fff', borderRadius: 14, padding: '48px 24px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,.06)', maxWidth: 500, margin: '0 auto' }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: 16 }}>❤️</div>
+            <h2 style={{ fontWeight: 700, fontSize: '1.25rem', color: '#111827', marginBottom: 8 }}>No Saved Vehicles</h2>
+            <p style={{ color: '#6b7280', fontSize: '.9rem', marginBottom: 24 }}>You haven't added any vehicles to your wishlist yet.</p>
+            <Link href="/cars" className="btn-orange">
               Browse Vehicles
             </Link>
           </div>

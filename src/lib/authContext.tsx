@@ -8,9 +8,10 @@ import type { Session } from '@supabase/supabase-js';
 interface AuthContextType {
   user: AdminUser | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
+  sendPhoneOtp: (phone: string) => Promise<void>;
+  verifyPhoneOtp: (phone: string, token: string) => Promise<void>;
   signOut: () => Promise<void>;
-  signUp: (email: string, password: string, fullName: string) => Promise<void>;
+  signUp: (phone: string, fullName: string, cnic: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,11 +57,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription?.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const sendPhoneOtp = async (phone: string) => {
     const supabase = getSupabaseClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const { error } = await supabase.auth.signInWithOtp({
+      phone,
+    });
+    if (error) throw error;
+  };
+
+  const verifyPhoneOtp = async (phone: string, token: string) => {
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.auth.verifyOtp({
+      phone,
+      token,
+      type: 'sms',
     });
     if (error) throw error;
   };
@@ -71,14 +81,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = async (phone: string, fullName: string, cnic: string) => {
     const supabase = getSupabaseClient();
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
+    
+    // In Supabase, phone auth signup is basically the same as signInWithOtp initially.
+    // However, if we are saving extra metadata (fullName, CNIC):
+    // For a real app we'd first create the user or update their profile after OTP verification.
+    // For the UI flow MVP, we'll trigger the OTP send here, and we'll save the metadata to local state to be synced after verification.
+    
+    const { error } = await supabase.auth.signInWithOtp({
+      phone,
       options: {
         data: {
           full_name: fullName,
+          cnic_hash: cnic,
         },
       },
     });
@@ -86,7 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut, signUp }}>
+    <AuthContext.Provider value={{ user, loading, sendPhoneOtp, verifyPhoneOtp, signOut, signUp }}>
       {children}
     </AuthContext.Provider>
   );

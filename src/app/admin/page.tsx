@@ -1,16 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { normalizeCarsFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
-import type { Car } from '@/types';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
-    totalProperties: 0,
-    availableProperties: 0,
-    totalValue: 0,
-    recentProperties: [] as Car[],
+    pendingInspections: 0,
+    activeAuctions: 0,
+    totalBids: 0,
+    completedAuctions: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -19,24 +17,34 @@ export default function AdminDashboard() {
       try {
         const supabase = getSupabaseClient();
 
-        // Get all cars
-        const { data: cars, error } = await supabase
-          .from('cars')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
+        // Pending Inspections
+        const { count: pendingInspections } = await supabase
+          .from('inspections')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'scheduled');
 
-        if (error) throw error;
+        // Active Auctions
+        const { count: activeAuctions } = await supabase
+          .from('auctions')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'active');
 
-        const allCars = normalizeCarsFromDb(cars);
-        const available = allCars.filter((c) => c.is_available).length;
-        const totalValue = allCars.reduce((sum, c) => sum + (c.price || 0), 0);
+        // Total Bids
+        const { count: totalBids } = await supabase
+          .from('bids')
+          .select('*', { count: 'exact', head: true });
+
+        // Completed Auctions
+        const { count: completedAuctions } = await supabase
+          .from('auctions')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'closed');
 
         setStats({
-          totalProperties: allCars.length,
-          availableProperties: available,
-          totalValue,
-          recentProperties: allCars,
+          pendingInspections: pendingInspections || 0,
+          activeAuctions: activeAuctions || 0,
+          totalBids: totalBids || 0,
+          completedAuctions: completedAuctions || 0,
         });
       } catch (error) {
         console.error('Failed to fetch stats:', error);
@@ -59,77 +67,67 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Welcome to Vehicle Management System</p>
+        <h1 className="text-3xl font-bold text-gray-900">Platform Overview</h1>
+        <p className="text-gray-600 mt-1">CarMandi high-level metrics and health.</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm font-medium">Total Vehicles</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">
-                {stats.totalProperties}
+              <p className="text-gray-500 text-sm font-medium">Pending Inspections</p>
+              <p className="text-3xl font-black text-orange-500 mt-1">
+                {stats.pendingInspections}
               </p>
             </div>
-            <div className="text-4xl">🚗</div>
+            <div className="text-4xl opacity-80">📋</div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm font-medium">Available</p>
-              <p className="text-3xl font-bold text-green-600 mt-1">
-                {stats.availableProperties}
+              <p className="text-gray-500 text-sm font-medium">Active Auctions</p>
+              <p className="text-3xl font-black text-green-500 mt-1">
+                {stats.activeAuctions}
               </p>
             </div>
-            <div className="text-4xl">✅</div>
+            <div className="text-4xl opacity-80">🟢</div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-gray-600 text-sm font-medium">Total Value</p>
-              <p className="text-3xl font-bold text-indigo-600 mt-1">
-                Rs. {(stats.totalValue / 1000).toFixed(0)}k
+              <p className="text-gray-500 text-sm font-medium">Total Bids Placed</p>
+              <p className="text-3xl font-black text-indigo-600 mt-1">
+                {stats.totalBids}
               </p>
             </div>
-            <div className="text-4xl">💰</div>
+            <div className="text-4xl opacity-80">💰</div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-500 text-sm font-medium">Completed Auctions</p>
+              <p className="text-3xl font-black text-gray-900 mt-1">
+                {stats.completedAuctions}
+              </p>
+            </div>
+            <div className="text-4xl opacity-80">🏁</div>
           </div>
         </div>
       </div>
-
-      {/* Recent Vehicles */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Vehicles</h2>
-        {stats.recentProperties.length === 0 ? (
-          <p className="text-gray-600">No Vehicles yet</p>
-        ) : (
-          <div className="space-y-3">
-            {stats.recentProperties.map((property) => (
-              <div
-                key={property.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
-              >
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">{property.title}</h3>
-                  <p className="text-sm text-gray-600">
-                    {property.year} {property.make} {property.model}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="font-bold text-gray-900">Rs. {property.price.toLocaleString()}</p>
-                  <p className="text-xs text-gray-600">
-                    {property.is_available ? '✅ Available' : '❌ Sold'}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+      
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="flex gap-4">
+          <a href="/admin/inspections" className="px-6 py-3 bg-[#1b3a6b] text-white rounded-lg font-bold hover:bg-indigo-800 transition shadow-sm">
+            Review Pending Inspections
+          </a>
+        </div>
       </div>
     </div>
   );

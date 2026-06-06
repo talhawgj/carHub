@@ -1,298 +1,308 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
-import { normalizeCarsFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Car } from '@/types';
 
+// Mock data for UI development before hooking up to DB
+const BRANDS = [
+  { name: 'Toyota', logo: 'https://cdn.worldvectorlogo.com/logos/toyota-2.svg' },
+  { name: 'Honda', logo: 'https://cdn.worldvectorlogo.com/logos/honda-5.svg' },
+  { name: 'Suzuki', logo: 'https://cdn.worldvectorlogo.com/logos/suzuki.svg' },
+  { name: 'Hyundai', logo: 'https://cdn.worldvectorlogo.com/logos/hyundai-1.svg' },
+  { name: 'KIA', logo: 'https://cdn.worldvectorlogo.com/logos/kia-motors-1.svg' },
+  { name: 'Changan', logo: 'https://cdn.worldvectorlogo.com/logos/changan.svg' },
+  { name: 'Haval', logo: 'https://cdn.worldvectorlogo.com/logos/haval.svg' },
+  { name: 'MG', logo: 'https://cdn.worldvectorlogo.com/logos/mg-motor-1.svg' },
+  { name: 'Mercedes-Benz', logo: 'https://cdn.worldvectorlogo.com/logos/mercedes-benz-9.svg' },
+  { name: 'Audi', logo: 'https://cdn.worldvectorlogo.com/logos/audi-13.svg' },
+];
+
+const PRICE_RANGES = [
+  { label: 'Under 10 Lacs', min: 0, max: 1000000 },
+  { label: '10 - 20 Lacs', min: 1000000, max: 2000000 },
+  { label: '20 - 40 Lacs', min: 2000000, max: 4000000 },
+  { label: '40 - 80 Lacs', min: 4000000, max: 8000000 },
+  { label: '80+ Lacs', min: 8000000, max: 999999999 },
+];
+
+const STATS = [
+  { value: '14-Day', label: 'Live Auctions' },
+  { value: '200+', label: 'Point Inspections' },
+  { value: '10+', label: 'Top Brands' },
+  { value: '100%', label: 'Verified Bidders' },
+];
+
+function AuctionTimer({ endsAt }: { endsAt: string }) {
+  const [timeLeft, setTimeLeft] = useState('');
+  
+  useEffect(() => {
+    const target = new Date(endsAt).getTime();
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const diff = target - now;
+      if (diff <= 0) {
+        setTimeLeft('Ended');
+        clearInterval(interval);
+        return;
+      }
+      const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
+      setTimeLeft(`${d}d ${h}h ${m}m ${s}s`);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [endsAt]);
+
+  const isEndingSoon = timeLeft !== 'Ended' && timeLeft.includes('0d 0h');
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: isEndingSoon ? '#dc2626' : '#4b5563', fontWeight: 600, fontSize: '.85rem' }}>
+      ⏱️ {timeLeft}
+    </div>
+  );
+}
+
+function AuctionCard({ auction }: { auction: any }) {
+  return (
+    <Link href={`/auctions/${auction.slug}`} style={{ display: 'block', textDecoration: 'none' }}>
+      <div className="car-card" style={{ height: '100%', position: 'relative' }}>
+        <div style={{ position: 'relative', height: 200, background: '#e5e7eb', overflow: 'hidden' }}>
+          {auction.image ? (
+            <img src={auction.image} alt={auction.title} style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform .4s' }}
+              onMouseEnter={e => (e.currentTarget.style.transform = 'scale(1.05)')}
+              onMouseLeave={e => (e.currentTarget.style.transform = 'scale(1)')} />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '3rem', color: '#9ca3af' }}>🚗</div>
+          )}
+          <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', gap: 6 }}>
+            <span className="badge badge-orange">Live Auction</span>
+            {auction.isInspected && <span className="badge badge-green">Autofy Inspected</span>}
+          </div>
+        </div>
+        <div style={{ padding: '14px 16px 16px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <h3 style={{ fontWeight: 700, fontSize: '1rem', color: '#111827', marginBottom: 4 }}>
+            {auction.year} {auction.make} {auction.model}
+          </h3>
+          <p style={{ fontSize: '.8rem', color: '#6b7280', marginBottom: 12 }}>{auction.city} • {auction.variant}</p>
+          
+          <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 12, marginTop: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
+              <div>
+                <p style={{ fontSize: '.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '.05em', fontWeight: 700 }}>Current Bid</p>
+                <p style={{ fontWeight: 800, fontSize: '1.25rem', color: '#1b3a6b' }}>
+                  PKR {(auction.currentBid || 0).toLocaleString()}
+                </p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ fontSize: '.75rem', color: '#6b7280', fontWeight: 600 }}>{auction.bidCount || 0} Bids</p>
+              </div>
+            </div>
+            <div style={{ background: '#f3f4f6', padding: '8px 12px', borderRadius: 8, marginTop: 8 }}>
+              <AuctionTimer endsAt={auction.endsAt} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function Home() {
-  const [featuredCars, setFeaturedCars] = useState<Car[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [liveAuctions, setLiveAuctions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchFeaturedCars = async () => {
+    const fetchAuctions = async () => {
       try {
         const supabase = getSupabaseClient();
         const { data, error } = await supabase
-          .from('cars')
-          .select('*')
-          .contains('tags', ['Featured'])
-          .limit(6)
-          .order('created_at', { ascending: false });
+          .from('auctions')
+          .select(`
+            *,
+            listings!inner (
+              year,
+              variant,
+              city,
+              slug,
+              makes ( name ),
+              models ( name )
+            )
+          `)
+          .eq('status', 'active')
+          .order('ends_at', { ascending: true })
+          .limit(4);
 
         if (error) throw error;
-        setFeaturedCars(normalizeCarsFromDb(data));
+        
+        // Transform data for the AuctionCard
+        const formatted = data.map(a => ({
+          id: a.id,
+          slug: a.listings.slug,
+          make: a.listings.makes?.name,
+          model: a.listings.models?.name,
+          year: a.listings.year,
+          variant: a.listings.variant,
+          city: a.listings.city,
+          currentBid: a.current_highest_bid,
+          bidCount: a.bid_count,
+          endsAt: a.ends_at,
+          isInspected: true, // If it's active, it was inspected
+          image: null // We'll hook up real images later
+        }));
+        
+        setLiveAuctions(formatted);
       } catch (err) {
-        console.error('Error fetching featured cars:', err);
+        console.error('Failed to fetch active auctions', err);
       } finally {
         setLoading(false);
       }
     };
-
-    fetchFeaturedCars();
+    
+    fetchAuctions();
   }, []);
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link href="/" className="flex items-center gap-2 flex-shrink-0">
-              <div className="w-8 h-8 bg-indigo-600 rounded-full"></div>
-              <span className="text-lg md:text-xl font-bold text-gray-900">Chaudhary Motors</span>
-            </Link>
-            
-            {/* Desktop Menu */}
-            <div className="hidden md:flex items-center gap-6">
-              <Link href="/cars" className="text-gray-700 hover:text-indigo-600 font-medium text-sm">
-                Browse Cars
-              </Link>
-              <Link href="/compare" className="text-gray-700 hover:text-indigo-600 font-medium text-sm">
-                Compare
-              </Link>
-              <Link href="/wishlist" className="text-gray-700 hover:text-indigo-600 font-medium text-sm">
-                Saved
-              </Link>
-              <Link href="/contact" className="text-gray-700 hover:text-indigo-600 font-medium text-sm">
-                Contact
-              </Link>
+    <div style={{ minHeight: '100vh' }}>
+      {/* ===== HERO ===== */}
+      <section style={{ background: 'linear-gradient(135deg, #1b3a6b 0%, #112649 60%, #0d1f3c 100%)', color: '#fff', padding: '64px 0 80px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -80, right: -80, width: 400, height: 400, borderRadius: '50%', background: 'rgba(232,97,44,.08)', pointerEvents: 'none' }} />
+        
+        <div className="container" style={{ position: 'relative' }}>
+          <div style={{ textAlign: 'center', marginBottom: 40 }}>
+            <div style={{ display: 'inline-block', background: 'rgba(232,97,44,.2)', color: '#e8612c', fontWeight: 700, fontSize: '.78rem', padding: '5px 14px', borderRadius: 999, marginBottom: 16, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+              Pakistan's First Online Car Auction Marketplace
             </div>
-
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-gray-700"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div className="md:hidden pb-4 border-t space-y-2">
-              <Link
-                href="/cars"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
-              >
-                Browse Cars
-              </Link>
-              <Link
-                href="/compare"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
-              >
-                Compare
-              </Link>
-              <Link
-                href="/wishlist"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
-              >
-                Saved
-              </Link>
-              <Link
-                href="/contact"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg font-medium"
-              >
-                Contact
-              </Link>
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* Hero Section */}
-      <section className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white py-12 md:py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 md:mb-12">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4">
-              Find Your Perfect Car
+            <h1 style={{ fontSize: 'clamp(2.2rem, 5vw, 3.8rem)', fontWeight: 800, lineHeight: 1.15, marginBottom: 16 }}>
+              Transparent Bidding.<br /> <span style={{ color: '#e8612c' }}>Verified Cars.</span>
             </h1>
-            <p className="text-base sm:text-lg md:text-xl text-indigo-100">
-              Browse our collection of quality vehicles and find exactly what you're looking for
+            <p style={{ fontSize: '1.1rem', color: 'rgba(255,255,255,.75)', maxWidth: 600, margin: '0 auto' }}>
+              Replace unreliable classified ads with our 14-day live auction platform, fully backed by Autofy's 200+ point inspection.
             </p>
           </div>
 
-          {/* Search Bar */}
-          <div className="max-w-2xl mx-auto">
-            <div className="flex flex-col sm:flex-row gap-2">
+          <div style={{ maxWidth: 680, margin: '0 auto' }}>
+            <div style={{ display: 'flex', gap: 10, background: 'rgba(255,255,255,.12)', backdropFilter: 'blur(10px)', borderRadius: 14, padding: 8 }}>
               <input
                 type="text"
-                placeholder="Search by make, model, or keywords..."
+                placeholder="Search by make, model, or keyword..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="flex-1 px-4 py-3 rounded-lg text-gray-900 bg-white text-sm md:text-base"
+                onChange={e => setSearchTerm(e.target.value)}
+                style={{ flex: 1, background: '#fff', border: 'none', borderRadius: 9, padding: '16px 20px', fontSize: '1rem', color: '#111827', outline: 'none' }}
               />
-              <Link
-                href={searchTerm ? `/cars?search=${encodeURIComponent(searchTerm)}` : '/cars'}
-                className="bg-white text-indigo-600 px-6 md:px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition whitespace-nowrap text-sm md:text-base"
-              >
-                Search
+              <Link href={`/auctions?search=${encodeURIComponent(searchTerm)}`} className="btn-orange" style={{ padding: '16px 32px', borderRadius: 9, fontSize: '1rem', fontWeight: 700 }}>
+                Search Auctions
               </Link>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Cars */}
-      <section className="py-12 md:py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 md:mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2 md:mb-4">Featured Vehicles</h2>
-            <p className="text-gray-600 text-sm md:text-base">Our handpicked selection of premium cars</p>
-          </div>
-
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-            </div>
-          ) : featuredCars.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
-              {featuredCars.map((car) => (
-                <Link key={car.id} href={`/cars/${car.id}`}>
-                  <div className="bg-white rounded-lg shadow-lg hover:shadow-xl transition overflow-hidden cursor-pointer h-full">
-                    {car.images && car.images.length > 0 && (
-                      <div className="relative h-40 sm:h-48 bg-gray-200">
-                        <img
-                          src={car.images[car.primary_image_index || 0]}
-                          alt={`${car.year} ${car.make} ${car.model}`}
-                          className="w-full h-full object-cover"
-                        />
-                        {car.tags && car.tags.includes('On Sale') && (
-                          <div className="absolute top-3 right-3 bg-red-600 text-white px-2 py-1 rounded-full text-xs md:text-sm font-semibold">
-                            On Sale
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    <div className="p-3 md:p-4">
-                      <h3 className="text-base md:text-lg font-bold text-gray-900 mb-1 md:mb-2">
-                        {car.year} {car.make} {car.model}
-                      </h3>
-                      <p className="text-gray-600 text-xs md:text-sm mb-3 md:mb-4 line-clamp-2">{car.description}</p>
-                      <div className="flex items-center justify-between mb-3 md:mb-4">
-                        <span className="text-lg md:text-2xl font-bold text-indigo-600">
-                          Rs. {car.price.toLocaleString()}
-                        </span>
-                        <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
-                          {car.condition}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-1 md:gap-2 text-xs text-gray-600 border-t pt-3 md:pt-4">
-                        <div className="text-center">
-                          <div className="font-semibold text-gray-900 text-xs md:text-sm">{car.mileage.toLocaleString()}</div>
-                          <div className="text-xs">Km</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="font-semibold text-gray-900 text-xs md:text-sm">{car.fuelType}</div>
-                          <div className="text-xs">Fuel</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="font-semibold text-gray-900 text-xs md:text-sm">{car.transmission}</div>
-                          <div className="text-xs">Trans.</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+            
+            <div style={{ display: 'flex', gap: 12, marginTop: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <span style={{ color: 'rgba(255,255,255,.6)', fontSize: '.85rem', alignSelf: 'center' }}>Popular:</span>
+              {['Civic', 'Corolla', 'Sportage', 'Alto'].map(q => (
+                <Link key={q} href={`/auctions?search=${encodeURIComponent(q)}`} style={{ background: 'rgba(255,255,255,.12)', color: 'rgba(255,255,255,.9)', fontSize: '.85rem', padding: '4px 12px', borderRadius: 999, transition: 'background .2s', textDecoration: 'none' }}>
+                  {q}
                 </Link>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-12 text-gray-600">
-              No featured cars available at the moment
-            </div>
-          )}
+          </div>
         </div>
       </section>
 
-      {/* Categories Section */}
-      <section className="py-12 md:py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8 md:mb-12 text-center">Browse by Category</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 md:gap-4">
-            {['Sedan', 'SUV', 'Truck', 'Coupe', 'Convertible', 'Van', 'Hatchback', 'Wagon'].map((category) => (
-              <Link
-                key={category}
-                href={`/cars?category=${category.toLowerCase()}`}
-                className="bg-indigo-50 hover:bg-indigo-100 rounded-lg p-4 md:p-6 text-center transition"
+      {/* ===== STATS ===== */}
+      <section style={{ background: '#e8612c' }}>
+        <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', padding: '24px 1.5rem' }}>
+          {STATS.map((s, i) => (
+            <div key={i} style={{ textAlign: 'center', color: '#fff', borderRight: i < 3 ? '1px solid rgba(255,255,255,.3)' : 'none' }}>
+              <div style={{ fontWeight: 800, fontSize: 'clamp(1.2rem, 3vw, 1.8rem)' }}>{s.value}</div>
+              <div style={{ fontSize: '.8rem', opacity: .9, fontWeight: 500 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== FEATURED LIVE AUCTIONS ===== */}
+      <section style={{ padding: '64px 0', background: '#f9fafb' }}>
+        <div className="container">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50%', background: '#e8612c', animation: 'pulse 2s infinite' }} />
+                <h2 style={{ fontWeight: 800, fontSize: '1.75rem', color: '#111827' }}>Live Auctions</h2>
+              </div>
+              <p style={{ color: '#6b7280', fontSize: '.9rem' }}>Bid on verified vehicles before time runs out</p>
+            </div>
+            <Link href="/auctions" className="btn-outline">View All Auctions</Link>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 24 }}>
+            {loading ? (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading live auctions...</div>
+            ) : liveAuctions.length === 0 ? (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: '#6b7280', background: '#fff', borderRadius: 16 }}>
+                No active auctions at the moment. Check back soon!
+              </div>
+            ) : (
+              liveAuctions.map(auction => (
+                <AuctionCard key={auction.id} auction={auction} />
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ===== BRAND GRID ===== */}
+      <section style={{ padding: '64px 0', background: '#fff' }}>
+        <div className="container">
+          <h2 style={{ fontWeight: 800, fontSize: '1.75rem', color: '#111827', marginBottom: 32, textAlign: 'center' }}>Browse by Make</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 16 }}>
+            {BRANDS.map(b => (
+              <Link key={b.name} href={`/auctions/${b.name.toLowerCase()}-cars-for-sale`} style={{
+                background: '#fff', borderRadius: 16, padding: '24px 12px', textAlign: 'center',
+                boxShadow: '0 2px 10px rgba(0,0,0,.04)', border: '1px solid #e5e7eb',
+                transition: 'all .2s', display: 'block', textDecoration: 'none',
+              }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = '#1b3a6b'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-4px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 10px 25px rgba(0,0,0,.08)'; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = '#e5e7eb'; (e.currentTarget as HTMLElement).style.transform = 'none'; (e.currentTarget as HTMLElement).style.boxShadow = '0 2px 10px rgba(0,0,0,.04)'; }}
               >
-                <div className="text-2xl md:text-3xl mb-2">🚗</div>
-                <p className="font-semibold text-gray-900 text-xs md:text-sm">{category}</p>
+                <div style={{ height: 48, marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src={b.logo} alt={`${b.name} logo`} style={{ maxHeight: '100%', maxWidth: '80%', objectFit: 'contain' }} />
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '.9rem', color: '#374151' }}>{b.name}</div>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="bg-indigo-600 text-white py-12 md:py-16">
-        <div className="max-w-4xl mx-auto text-center px-4">
-          <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">Can't Find What You're Looking For?</h2>
-          <p className="text-indigo-100 mb-6 md:mb-8 text-sm md:text-lg">
-            Contact us and let our team help you find the perfect vehicle
-          </p>
-          <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center flex-wrap">
-            <Link
-              href="/cars"
-              className="bg-white text-indigo-600 px-6 md:px-8 py-2 md:py-3 rounded-lg font-semibold hover:bg-gray-100 transition text-sm md:text-base"
-            >
-              Browse All Vehicles
-            </Link>
-            <Link
-              href="/contact"
-              className="bg-indigo-700 text-white px-6 md:px-8 py-2 md:py-3 rounded-lg font-semibold hover:bg-indigo-800 transition border border-indigo-400 text-sm md:text-base"
-            >
-              Contact Us
-            </Link>
+      {/* ===== PRICE RANGES ===== */}
+      <section style={{ padding: '64px 0', background: '#f9fafb' }}>
+        <div className="container">
+          <h2 style={{ fontWeight: 800, fontSize: '1.75rem', color: '#111827', marginBottom: 32, textAlign: 'center' }}>Browse by Price</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+            {PRICE_RANGES.map((range, i) => (
+              <Link key={i} href={`/auctions?min_price=${range.min}&max_price=${range.max}`} style={{
+                background: '#fff', borderRadius: 12, padding: '24px', textAlign: 'center',
+                border: '1px solid #e5e7eb', textDecoration: 'none', transition: 'border-color .2s'
+              }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = '#e8612c'}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = '#e5e7eb'}
+              >
+                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1b3a6b' }}>{range.label}</div>
+                <div style={{ fontSize: '.8rem', color: '#6b7280', marginTop: 8 }}>View Auctions →</div>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-8 md:py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-6 md:mb-8">
-            <div>
-              <h3 className="text-white font-bold mb-3 md:mb-4">Chaudhary Motors</h3>
-              <p className="text-xs md:text-sm">Your trusted source for quality vehicles</p>
-            </div>
-            <div>
-              <h3 className="text-white font-bold mb-3 md:mb-4">Browse</h3>
-              <ul className="space-y-1 md:space-y-2 text-xs md:text-sm">
-                <li><Link href="/cars" className="hover:text-white">All Vehicles</Link></li>
-                <li><Link href="/cars?category=sedan" className="hover:text-white">Sedans</Link></li>
-                <li><Link href="/cars?category=suv" className="hover:text-white">SUVs</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-white font-bold mb-3 md:mb-4">Company</h3>
-              <ul className="space-y-1 md:space-y-2 text-xs md:text-sm">
-                <li><Link href="/contact" className="hover:text-white">Contact Us</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-white font-bold mb-3 md:mb-4">Legal</h3>
-              <ul className="space-y-1 md:space-y-2 text-xs md:text-sm">
-                <li><a href="#" className="hover:text-white">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-white">Terms of Service</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 pt-6 md:pt-8 text-center text-xs md:text-sm">
-            <p>&copy; 2026 Chaudhary Motors. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes pulse {
+          0% { box-shadow: 0 0 0 0 rgba(232, 97, 44, 0.4); }
+          70% { box-shadow: 0 0 0 10px rgba(232, 97, 44, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(232, 97, 44, 0); }
+        }
+      `}} />
     </div>
   );
 }
-

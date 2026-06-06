@@ -140,7 +140,8 @@ export default function PropertyForm({
           .eq('id', initialData.id);
 
         if (updateError) throw updateError;
-        router.push('/admin/properties');
+        const basePath = window.location.pathname.startsWith('/admin') ? '/admin' : '/dashboard';
+        router.push(basePath + '/properties');
       } else {
         if (!user?.id) {
           throw new Error('You must be logged in to create a car listing');
@@ -157,7 +158,8 @@ export default function PropertyForm({
           .insert([insertPayload]);
 
         if (insertError) throw insertError;
-        router.push('/admin/properties');
+        const basePath = window.location.pathname.startsWith('/admin') ? '/admin' : '/dashboard';
+        router.push(basePath + '/properties');
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to save property';

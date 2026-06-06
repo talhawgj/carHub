@@ -16,34 +16,75 @@ export function ComparePageContent() {
   const [availableCars, setAvailableCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch all cars
+  // Fetch active auctions
   useEffect(() => {
-    const fetchCars = async () => {
+    const fetchAuctions = async () => {
       try {
         const supabase = getSupabaseClient();
         const { data, error } = await supabase
-          .from('cars')
-          .select('*')
-          .eq('is_available', true)
+          .from('auctions')
+          .select(`
+            id,
+            slug,
+            current_highest_bid,
+            listing:listings (
+              id,
+              year,
+              condition,
+              mileage,
+              fuel_type,
+              transmission,
+              category,
+              color,
+              specs,
+              photos,
+              makes (name),
+              models (name)
+            )
+          `)
+          .eq('status', 'active')
           .order('created_at', { ascending: false });
 
         if (error) throw error;
-        const normalized = normalizeCarsFromDb(data);
-        setAvailableCars(normalized);
+
+        // Transform auction data into the "Car" interface expected by the UI
+        const mappedAuctions = data.map((a: any) => {
+          const l = a.listing;
+          return {
+            id: a.id,
+            slug: a.slug,
+            make: l.makes?.name || 'Unknown',
+            model: l.models?.name || 'Unknown',
+            year: l.year,
+            price: a.current_highest_bid || 0,
+            images: l.photos || [],
+            condition: l.condition,
+            mileage: l.mileage,
+            fuelType: l.fuel_type,
+            transmission: l.transmission,
+            category: l.category,
+            color: l.color,
+            specs: typeof l.specs === 'string' ? JSON.parse(l.specs) : (l.specs || {})
+          };
+        });
+
+        setAvailableCars(mappedAuctions);
 
         // Load selected cars
         if (selectedCars.length > 0) {
-          const selected = normalized.filter((car: Car) => selectedCars.includes(car.id));
+          const selected = mappedAuctions.filter((car: any) => selectedCars.includes(car.id));
           setCars(selected);
+        } else {
+          setCars([]);
         }
       } catch (err) {
-        console.error('Error fetching cars:', err);
+        console.error('Error fetching auctions:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchCars();
+    fetchAuctions();
   }, [selectedCars]);
 
   const toggleCarSelection = (carId: string) => {
@@ -58,255 +99,128 @@ export function ComparePageContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', background: '#f5f7fa', paddingBottom: 64 }}>
       {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-          <Link href="/cars" className="text-indigo-600 hover:text-indigo-700 font-medium text-xs md:text-sm mb-4 inline-block">
-            ← Back to Cars
+      <div style={{ background: '#1b3a6b', color: '#fff', padding: '28px 0' }}>
+        <div className="container">
+          <Link href="/auctions" style={{ color: 'rgba(255,255,255,.7)', fontSize: '.85rem', display: 'inline-block', marginBottom: 12 }}>
+            ← Back to Auctions
           </Link>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Compare Vehicles</h1>
-          <p className="text-gray-600 mt-1 md:mt-2 text-sm md:text-base">Select up to 3 cars to compare side by side</p>
+          <h1 style={{ fontWeight: 800, fontSize: '1.6rem' }}>Compare Vehicles</h1>
+          <p style={{ color: 'rgba(255,255,255,.75)', fontSize: '.875rem', marginTop: 4 }}>
+            Select up to 3 cars to compare side by side
+          </p>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
+      <div className="container" style={{ paddingTop: 32 }}>
         {/* Car Selection */}
-        <div className="bg-white rounded-lg shadow p-4 md:p-6 mb-6 md:mb-8">
-          <h2 className="text-base md:text-lg font-bold text-gray-900 mb-4">
+        <div style={{ background: '#fff', borderRadius: 16, padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,.06)', marginBottom: 32 }}>
+          <h2 style={{ fontWeight: 700, fontSize: '1.1rem', color: '#111827', marginBottom: 16 }}>
             Add Cars to Compare ({selectedCars.length}/3)
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-            {availableCars.map((car) => (
-              <button
-                key={car.id}
-                onClick={() => toggleCarSelection(car.id)}
-                className={`p-3 md:p-4 rounded-lg border-2 text-left transition text-sm md:text-base ${
-                  selectedCars.includes(car.id)
-                    ? 'border-indigo-600 bg-indigo-50'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'
-                }`}
-                disabled={!selectedCars.includes(car.id) && selectedCars.length >= 3}
-              >
-                <div className="flex items-start gap-3">
-                  {car.images && car.images.length > 0 && (
-                    <img
-                      src={car.images[car.primary_image_index || 0]}
-                      alt={`${car.year} ${car.make} ${car.model}`}
-                      className="w-12 md:w-16 h-12 md:h-16 rounded object-cover flex-shrink-0"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-gray-900 text-xs md:text-base">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16, maxHeight: 300, overflowY: 'auto', paddingRight: 8 }}>
+            {availableCars.map((car) => {
+              const isSelected = selectedCars.includes(car.id);
+              return (
+                <button
+                  key={car.id}
+                  onClick={() => toggleCarSelection(car.id)}
+                  disabled={!isSelected && selectedCars.length >= 3}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 12, textAlign: 'left',
+                    border: isSelected ? '2px solid #e8612c' : '2px solid #e5e7eb',
+                    background: isSelected ? '#fff5f0' : '#fff',
+                    opacity: (!isSelected && selectedCars.length >= 3) ? 0.5 : 1,
+                    cursor: (!isSelected && selectedCars.length >= 3) ? 'not-allowed' : 'pointer',
+                    transition: 'all .2s'
+                  }}
+                >
+                  <div style={{ width: 64, height: 64, borderRadius: 8, background: '#e5e7eb', overflow: 'hidden', flexShrink: 0 }}>
+                    {car.images?.[0] && <img src={car.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <h3 style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {car.year} {car.make} {car.model}
                     </h3>
-                    <p className="text-xs md:text-sm text-gray-600">Rs. {car.price.toLocaleString()}</p>
-                    {selectedCars.includes(car.id) && (
-                      <span className="text-xs text-indigo-600 font-semibold">✓ Selected</span>
-                    )}
+                    <p style={{ fontSize: '.8rem', color: '#6b7280', marginTop: 2 }}>Rs. {car.price.toLocaleString()}</p>
+                    {isSelected && <span style={{ fontSize: '.7rem', color: '#e8612c', fontWeight: 700, marginTop: 4, display: 'block' }}>✓ Selected</span>}
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Comparison Table */}
         {cars.length > 0 ? (
-          <div className="bg-white rounded-lg shadow overflow-x-auto">
-            <table className="w-full text-xs md:text-sm">
-              <tbody>
-                {/* Images */}
-                <tr className="border-b">
-                  <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50 w-20 md:w-32 flex-shrink-0">Images</td>
-                  {cars.map((car) => (
-                    <td key={car.id} className="p-3 md:p-4 min-w-48 md:min-w-64">
-                      {car.images && car.images.length > 0 && (
-                        <img
-                          src={car.images[car.primary_image_index || 0]}
-                          alt={`${car.year} ${car.make} ${car.model}`}
-                          className="w-full h-32 md:h-48 object-cover rounded-lg"
-                        />
-                      )}
-                    </td>
-                  ))}
-                </tr>
+          <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,.06)', overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}>
+                <tbody>
+                  {/* Images */}
+                  <tr>
+                    <td style={{ padding: '16px 20px', fontWeight: 700, color: '#374151', background: '#f9fafb', width: 140, borderBottom: '1px solid #e5e7eb' }}>Vehicle</td>
+                    {cars.map((car) => (
+                      <td key={car.id} style={{ padding: 16, borderBottom: '1px solid #e5e7eb', minWidth: 250, verticalAlign: 'top' }}>
+                        <div style={{ position: 'relative', width: '100%', aspectRatio: '4/3', borderRadius: 10, background: '#e5e7eb', overflow: 'hidden', marginBottom: 12 }}>
+                          {car.images?.[0] && <img src={car.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                        </div>
+                        <h3 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#111827' }}>{car.year} {car.make} {car.model}</h3>
+                        <div style={{ fontWeight: 900, fontSize: '1.3rem', color: '#e8612c', marginTop: 4 }}>Rs. {car.price.toLocaleString()}</div>
+                      </td>
+                    ))}
+                  </tr>
 
-                {/* Title */}
-                <tr className="border-b">
-                  <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Title</td>
-                  {cars.map((car) => (
-                    <td key={car.id} className="p-3 md:p-4 font-semibold text-gray-900">
-                      {car.year} {car.make} {car.model}
-                    </td>
-                  ))}
-                </tr>
-
-                {/* Price */}
-                <tr className="border-b bg-indigo-50">
-                  <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Price</td>
-                  {cars.map((car) => (
-                    <td key={car.id} className="p-3 md:p-4 text-lg md:text-2xl font-bold text-indigo-600">
-                      Rs. {car.price.toLocaleString()}
-                    </td>
-                  ))}
-                </tr>
-
-                {/* Year */}
-                <tr className="border-b">
-                  <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Year</td>
-                  {cars.map((car) => (
-                    <td key={car.id} className="p-3 md:p-4 text-gray-900">{car.year}</td>
-                  ))}
-                </tr>
-
-                {/* Condition */}
-                <tr className="border-b">
-                  <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Condition</td>
-                  {cars.map((car) => (
-                    <td key={car.id} className="p-3 md:p-4 capitalize text-gray-900">{car.condition}</td>
-                  ))}
-                </tr>
-
-                {/* Mileage */}
-                <tr className="border-b">
-                  <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Mileage</td>
-                  {cars.map((car) => (
-                    <td key={car.id} className="p-3 md:p-4 text-gray-900">{car.mileage.toLocaleString()} mi</td>
-                  ))}
-                </tr>
-
-                {/* Fuel Type */}
-                <tr className="border-b">
-                  <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Fuel Type</td>
-                  {cars.map((car) => (
-                    <td key={car.id} className="p-3 md:p-4 capitalize text-gray-900">{car.fuelType}</td>
-                  ))}
-                </tr>
-
-                {/* Transmission */}
-                <tr className="border-b">
-                  <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Transmission</td>
-                  {cars.map((car) => (
-                    <td key={car.id} className="p-3 md:p-4 capitalize text-gray-900">{car.transmission}</td>
-                  ))}
-                </tr>
-
-                {/* Category */}
-                <tr className="border-b">
-                  <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Category</td>
-                  {cars.map((car) => (
-                    <td key={car.id} className="p-3 md:p-4 capitalize text-gray-900">{car.category || 'N/A'}</td>
-                  ))}
-                </tr>
-
-                {/* Color */}
-                <tr className="border-b">
-                  <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Color</td>
-                  {cars.map((car) => (
-                    <td key={car.id} className="p-3 md:p-4 text-gray-900">{car.color}</td>
-                  ))}
-                </tr>
-
-                {/* Specs Section */}
-                {cars.some((car) => car.specs && Object.keys(car.specs).length > 0) && (
-                  <>
-                    {/* Horsepower */}
-                    {cars.some((car) => car.specs?.horsepower) && (
-                      <tr className="border-b">
-                        <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Horsepower</td>
-                        {cars.map((car) => (
-                          <td key={car.id} className="p-3 md:p-4 text-gray-900">
-                            {car.specs?.horsepower ? `${car.specs.horsepower} hp` : 'N/A'}
+                  {/* Specs Map */}
+                  {[
+                    { label: 'Condition', render: (c: Car) => c.condition, capitalize: true },
+                    { label: 'Mileage', render: (c: Car) => c.mileage ? `${c.mileage.toLocaleString()} km` : '—' },
+                    { label: 'Fuel Type', render: (c: Car) => c.fuelType || '—', capitalize: true },
+                    { label: 'Transmission', render: (c: Car) => c.transmission || '—', capitalize: true },
+                    { label: 'Body Type', render: (c: Car) => c.category || '—', capitalize: true },
+                    { label: 'Color', render: (c: Car) => c.color || '—', capitalize: true },
+                    { label: 'Horsepower', render: (c: Car) => c.specs?.horsepower ? `${c.specs.horsepower} hp` : '—' },
+                    { label: 'Engine Size', render: (c: Car) => c.specs?.engine_size || '—' },
+                    { label: 'Doors', render: (c: Car) => c.specs?.doors || '—' },
+                    { label: 'Seats', render: (c: Car) => c.specs?.seats || '—' },
+                    { label: 'Acceleration', render: (c: Car) => c.specs?.acceleration || '—' },
+                    { label: 'Top Speed', render: (c: Car) => c.specs?.top_speed ? `${c.specs.top_speed} km/h` : '—' },
+                  ].map((row, i) => {
+                    const rowHasData = cars.some(c => row.render(c) !== '—');
+                    if (!rowHasData) return null;
+                    return (
+                      <tr key={row.label} style={{ background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                        <td style={{ padding: '16px 20px', fontWeight: 600, color: '#4b5563', fontSize: '.85rem', borderBottom: '1px solid #f3f4f6' }}>{row.label}</td>
+                        {cars.map(c => (
+                          <td key={c.id} style={{ padding: '16px', color: '#111827', fontSize: '.9rem', fontWeight: 500, borderBottom: '1px solid #f3f4f6', textTransform: row.capitalize ? 'capitalize' : 'none' }}>
+                            {row.render(c)}
                           </td>
                         ))}
                       </tr>
-                    )}
+                    );
+                  })}
 
-                    {/* Engine Size */}
-                    {cars.some((car) => car.specs?.engine_size) && (
-                      <tr className="border-b">
-                        <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Engine Size</td>
-                        {cars.map((car) => (
-                          <td key={car.id} className="p-3 md:p-4 text-gray-900">{car.specs?.engine_size || 'N/A'}</td>
-                        ))}
-                      </tr>
-                    )}
-
-                    {/* Doors */}
-                    {cars.some((car) => car.specs?.doors) && (
-                      <tr className="border-b">
-                        <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Doors</td>
-                        {cars.map((car) => (
-                          <td key={car.id} className="p-3 md:p-4 text-gray-900">{car.specs?.doors || 'N/A'}</td>
-                        ))}
-                      </tr>
-                    )}
-
-                    {/* Seats */}
-                    {cars.some((car) => car.specs?.seats) && (
-                      <tr className="border-b">
-                        <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Seats</td>
-                        {cars.map((car) => (
-                          <td key={car.id} className="p-3 md:p-4 text-gray-900">{car.specs?.seats || 'N/A'}</td>
-                        ))}
-                      </tr>
-                    )}
-
-                    {/* MPG */}
-                    {cars.some((car) => car.specs?.mpg) && (
-                      <tr className="border-b">
-                        <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">MPG</td>
-                        {cars.map((car) => (
-                          <td key={car.id} className="p-3 md:p-4 text-gray-900">{car.specs?.mpg ? `${car.specs.mpg} mpg` : 'N/A'}</td>
-                        ))}
-                      </tr>
-                    )}
-
-                    {/* Acceleration */}
-                    {cars.some((car) => car.specs?.acceleration) && (
-                      <tr className="border-b">
-                        <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Acceleration</td>
-                        {cars.map((car) => (
-                          <td key={car.id} className="p-3 md:p-4 text-gray-900">{car.specs?.acceleration || 'N/A'}</td>
-                        ))}
-                      </tr>
-                    )}
-
-                    {/* Top Speed */}
-                    {cars.some((car) => car.specs?.top_speed) && (
-                      <tr className="border-b">
-                        <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">Top Speed</td>
-                        {cars.map((car) => (
-                          <td key={car.id} className="p-3 md:p-4 text-gray-900">
-                            {car.specs?.top_speed ? `${car.specs.top_speed} mph` : 'N/A'}
-                          </td>
-                        ))}
-                      </tr>
-                    )}
-                  </>
-                )}
-
-                {/* Action Buttons */}
-                <tr>
-                  <td className="p-3 md:p-4 font-bold text-gray-900 bg-gray-50">View Details</td>
-                  {cars.map((car) => (
-                    <td key={car.id} className="p-3 md:p-4">
-                      <Link
-                        href={`/cars/${car.id}`}
-                        className="inline-block bg-indigo-600 text-white px-3 md:px-4 py-2 rounded-lg font-semibold hover:bg-indigo-700 transition text-xs md:text-sm whitespace-nowrap"
-                      >
-                        View Full Details
-                      </Link>
-                    </td>
-                  ))}
-                </tr>
-              </tbody>
-            </table>
+                  {/* View Details Buttons */}
+                  <tr>
+                    <td style={{ padding: '20px', background: '#f9fafb' }}></td>
+                    {cars.map((car: any) => (
+                      <td key={car.id} style={{ padding: '20px' }}>
+                        <Link href={`/auctions/${car.slug}`} className="btn-primary" style={{ display: 'block', textAlign: 'center', background: '#1b3a6b' }}>
+                          View Live Auction
+                        </Link>
+                      </td>
+                    ))}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow p-8 md:p-12 text-center">
-            <p className="text-gray-600 text-base md:text-lg">Select cars above to compare them</p>
+          <div style={{ background: '#fff', borderRadius: 16, padding: '60px 20px', textAlign: 'center', boxShadow: '0 2px 8px rgba(0,0,0,.06)' }}>
+            <div style={{ fontSize: '3rem', marginBottom: 16 }}>⚖️</div>
+            <h2 style={{ fontWeight: 700, fontSize: '1.25rem', color: '#111827', marginBottom: 8 }}>No Cars Selected</h2>
+            <p style={{ color: '#6b7280' }}>Select cars from the list above to compare them side by side.</p>
           </div>
         )}
       </div>

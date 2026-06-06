@@ -1,100 +1,75 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { normalizeCarFromDb } from '@/lib/carTransform';
+import { normalizeCarFromDb, normalizeCarsFromDb } from '@/lib/carTransform';
 import { getSupabaseClient } from '@/lib/supabase';
 import type { Car } from '@/types';
+
+const SpecItem = ({ icon, label, value }: { icon: string; label: string; value: string }) => (
+  <div style={{ background: '#f9fafb', borderRadius: 10, padding: '14px 12px', textAlign: 'center', border: '1px solid #f3f4f6' }}>
+    <div style={{ fontSize: '1.3rem', marginBottom: 4 }}>{icon}</div>
+    <div style={{ fontSize: '.72rem', color: '#6b7280', marginBottom: 2 }}>{label}</div>
+    <div style={{ fontWeight: 700, fontSize: '.9rem', color: '#111827', textTransform: 'capitalize' }}>{value}</div>
+  </div>
+);
 
 export default function CarDetailPage() {
   const params = useParams();
   const router = useRouter();
   const carId = params.id as string;
-
   const [car, setCar] = useState<Car | null>(null);
+  const [similarCars, setSimilarCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
-  const [contactForm, setContactForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    message: '',
-  });
+  const [contactForm, setContactForm] = useState({ name: '', email: '', phone: '', message: '' });
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageStatus, setMessageStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  // Fetch car details
   useEffect(() => {
     const fetchCar = async () => {
       try {
         const supabase = getSupabaseClient();
-        const { data, error: fetchError } = await supabase
-          .from('cars')
-          .select('*')
-          .eq('id', carId)
-          .single();
-
+        const { data, error: fetchError } = await supabase.from('cars').select('*').eq('id', carId).single();
         if (fetchError) throw fetchError;
-        setCar(normalizeCarFromDb(data));
+        const carData = normalizeCarFromDb(data);
+        setCar(carData);
+        setCurrentImageIndex(carData.primary_image_index || 0);
+        // Fetch similar
+        const { data: similar } = await supabase.from('cars').select('*').eq('make', carData.make).neq('id', carId).limit(3);
+        if (similar) setSimilarCars(normalizeCarsFromDb(similar));
       } catch (err) {
-        console.error('Error fetching car:', err);
-        setError('Car not found');
+        console.error(err);
       } finally {
         setLoading(false);
       }
     };
-
     fetchCar();
-
-    // Check wishlist
     const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
     setIsInWishlist(wishlist.includes(carId));
   }, [carId]);
 
   const toggleWishlist = () => {
-    const wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
-    if (isInWishlist) {
-      const updated = wishlist.filter((id: string) => id !== carId);
-      localStorage.setItem('wishlist', JSON.stringify(updated));
-    } else {
-      wishlist.push(carId);
-      localStorage.setItem('wishlist', JSON.stringify(wishlist));
-    }
+    const wl: string[] = JSON.parse(localStorage.getItem('wishlist') || '[]');
+    const updated = isInWishlist ? wl.filter(id => id !== carId) : [...wl, carId];
+    localStorage.setItem('wishlist', JSON.stringify(updated));
     setIsInWishlist(!isInWishlist);
   };
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSendingMessage(true);
-    setMessageStatus('idle');
-
     try {
       const supabase = getSupabaseClient();
-      const subject = car
-        ? `Inquiry about ${car.year} ${car.make} ${car.model}`
-        : 'Vehicle inquiry';
-
-      const { error } = await supabase.from('contact_inquiries').insert([
-        {
-          car_id: carId,
-          name: contactForm.name,
-          email: contactForm.email,
-          phone: contactForm.phone,
-          subject,
-          message: contactForm.message,
-        },
-      ]);
-
+      const subject = car ? `Inquiry about ${car.year} ${car.make} ${car.model}` : 'Vehicle inquiry';
+      const { error } = await supabase.from('contact_inquiries').insert([{ car_id: carId, name: contactForm.name, email: contactForm.email, phone: contactForm.phone, subject, message: contactForm.message }]);
       if (error) throw error;
       setMessageStatus('success');
       setContactForm({ name: '', email: '', phone: '', message: '' });
       setTimeout(() => setShowContactForm(false), 2000);
     } catch (err) {
-      console.error('Error sending message:', err);
       setMessageStatus('error');
     } finally {
       setSendingMessage(false);
@@ -103,338 +78,264 @@ export default function CarDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-          <p className="text-gray-600 mt-4">Loading vehicle details...</p>
-        </div>
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
+        <div className="spinner" />
+        <p style={{ color: '#6b7280' }}>Loading vehicle details...</p>
       </div>
     );
   }
 
-  if (error || !car) {
+  if (!car) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-gray-600 text-lg mb-4">{error || 'Car not found'}</p>
-          <Link href="/cars" className="text-indigo-600 hover:text-indigo-700 font-medium">
-            ← Back to Cars
-          </Link>
-        </div>
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
+        <div style={{ fontSize: '3rem' }}>🚫</div>
+        <p style={{ color: '#374151', fontWeight: 600 }}>Vehicle not found</p>
+        <Link href="/cars" style={{ color: '#e8612c', fontWeight: 600 }}>← Back to Cars</Link>
       </div>
     );
   }
 
   const images = car.images || [];
-  const primaryImage = images[car.primary_image_index || 0] || '/placeholder-car.jpg';
+  const currentImage = images[currentImageIndex] || '';
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 md:py-4">
-          <Link href="/cars" className="text-indigo-600 hover:text-indigo-700 font-medium text-xs md:text-sm">
-            ← Back to Cars
-          </Link>
+    <div style={{ minHeight: '100vh', background: '#f5f7fa' }}>
+      {/* Breadcrumb */}
+      <div style={{ background: '#1b3a6b', padding: '12px 0' }}>
+        <div className="container" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '.82rem', color: 'rgba(255,255,255,.7)' }}>
+          <Link href="/" style={{ color: 'rgba(255,255,255,.7)' }}>Home</Link>
+          <span>›</span>
+          <Link href="/cars" style={{ color: 'rgba(255,255,255,.7)' }}>Cars</Link>
+          <span>›</span>
+          <span style={{ color: '#e8612c' }}>{car.year} {car.make} {car.model}</span>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-          {/* Gallery */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              {/* Main Image */}
-              <div className="relative bg-gray-200 aspect-video">
-                <img
-                  src={primaryImage}
-                  alt={`${car.year} ${car.make} ${car.model}`}
-                  className="w-full h-full object-cover"
-                />
-                {car.tags && car.tags.length > 0 && (
-                  <div className="absolute top-2 left-2 md:top-4 md:left-4 flex gap-2 flex-wrap">
-                    {car.tags.map((tag) => (
-                      <span key={tag} className="bg-indigo-600 text-white text-xs md:text-sm px-2 md:px-3 py-1 rounded-full font-semibold">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+      <div className="container" style={{ padding: '24px 1.5rem 48px' }}>
+        <div style={{ display: 'grid', gap: 24 }} className="detail-layout">
+
+          {/* LEFT — Gallery + Details */}
+          <div style={{ minWidth: 0 }}>
+            {/* Main image */}
+            <div style={{ background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,.08)', marginBottom: 8 }}>
+              <div style={{ position: 'relative', aspectRatio: '16/9', background: '#e5e7eb', overflow: 'hidden' }}>
+                {currentImage ? (
+                  <img src={currentImage} alt={`${car.year} ${car.make} ${car.model}`}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '4rem', color: '#9ca3af' }}>🚗</div>
+                )}
+                {/* Badges */}
+                <div style={{ position: 'absolute', top: 14, left: 14, display: 'flex', gap: 8 }}>
+                  {car.tags?.includes('Featured') && <span className="badge badge-orange">Featured</span>}
+                  {car.condition === 'new' && <span className="badge badge-navy">New</span>}
+                </div>
+                {/* Nav arrows */}
+                {images.length > 1 && (
+                  <>
+                    <button onClick={() => setCurrentImageIndex(i => (i - 1 + images.length) % images.length)}
+                      style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', boxShadow: '0 2px 8px rgba(0,0,0,.15)' }}>‹</button>
+                    <button onClick={() => setCurrentImageIndex(i => (i + 1) % images.length)}
+                      style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', boxShadow: '0 2px 8px rgba(0,0,0,.15)' }}>›</button>
+                  </>
                 )}
               </div>
-
               {/* Thumbnails */}
               {images.length > 1 && (
-                <div className="p-3 md:p-4 bg-white border-t">
-                  <div className="grid grid-cols-4 md:grid-cols-6 gap-2">
-                    {images.map((image, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentImageIndex(index)}
-                        className={`h-16 md:h-20 rounded border-2 overflow-hidden transition ${
-                          index === car.primary_image_index || 0
-                            ? 'border-indigo-600'
-                            : 'border-gray-300 hover:border-gray-400'
-                        }`}
-                      >
-                        <img
-                          src={image}
-                          alt={`Thumbnail ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
-                  </div>
+                <div style={{ display: 'flex', gap: 8, padding: '10px 12px', overflowX: 'auto' }}>
+                  {images.map((img, idx) => (
+                    <button key={idx} onClick={() => setCurrentImageIndex(idx)}
+                      style={{ flexShrink: 0, width: 72, height: 54, borderRadius: 8, overflow: 'hidden', border: `2.5px solid ${idx === currentImageIndex ? '#1b3a6b' : '#e5e7eb'}`, transition: 'border-color .2s' }}>
+                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Description */}
-            <div className="bg-white rounded-lg shadow p-4 md:p-6 mt-4 md:mt-6">
-              <h2 className="text-base md:text-lg font-bold text-gray-900 mb-3 md:mb-4">About This Vehicle</h2>
-              <p className="text-gray-700 leading-relaxed text-sm md:text-base">{car.description}</p>
+            {/* Key Specs Grid */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,.06)', marginBottom: 20 }}>
+              <h2 style={{ fontWeight: 700, fontSize: '1.05rem', color: '#111827', marginBottom: 14 }}>Key Specifications</h2>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: 10 }}>
+                <SpecItem icon="📅" label="Year" value={String(car.year)} />
+                <SpecItem icon="📏" label="Mileage" value={car.mileage ? `${car.mileage.toLocaleString()} km` : 'N/A'} />
+                <SpecItem icon="⛽" label="Fuel" value={car.fuelType || 'N/A'} />
+                <SpecItem icon="⚙️" label="Transmission" value={car.transmission || 'N/A'} />
+                <SpecItem icon="🎨" label="Color" value={car.color || 'N/A'} />
+                <SpecItem icon="🚗" label="Condition" value={car.condition || 'N/A'} />
+                {car.specs?.engine_size && <SpecItem icon="🔧" label="Engine" value={car.specs.engine_size} />}
+                {car.specs?.seats && <SpecItem icon="💺" label="Seats" value={String(car.specs.seats)} />}
+              </div>
             </div>
 
-            {/* Specs */}
+            {/* Description */}
+            <div style={{ background: '#fff', borderRadius: 16, padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,.06)', marginBottom: 20 }}>
+              <h2 style={{ fontWeight: 700, fontSize: '1.05rem', color: '#111827', marginBottom: 12 }}>About This Vehicle</h2>
+              <p style={{ color: '#4b5563', lineHeight: 1.8, fontSize: '.9rem' }}>{car.description}</p>
+            </div>
+
+            {/* Additional Specs */}
             {car.specs && Object.keys(car.specs).length > 0 && (
-              <div className="bg-white rounded-lg shadow p-4 md:p-6 mt-4 md:mt-6">
-                <h2 className="text-base md:text-lg font-bold text-gray-900 mb-4 md:mb-6">Vehicle Specifications</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                  {car.specs.horsepower && (
-                    <div>
-                      <p className="text-xs md:text-sm text-gray-600">Horsepower</p>
-                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.horsepower} hp</p>
+              <div style={{ background: '#fff', borderRadius: 16, padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,.06)', marginBottom: 20 }}>
+                <h2 style={{ fontWeight: 700, fontSize: '1.05rem', color: '#111827', marginBottom: 14 }}>Technical Specifications</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, border: '1px solid #f3f4f6', borderRadius: 10, overflow: 'hidden' }}>
+                  {[
+                    { k: 'Horsepower', v: car.specs.horsepower ? `${car.specs.horsepower} hp` : null },
+                    { k: 'Engine Size', v: car.specs.engine_size },
+                    { k: 'Doors', v: car.specs.doors },
+                    { k: 'Seats', v: car.specs.seats },
+                    { k: 'Top Speed', v: car.specs.top_speed ? `${car.specs.top_speed} km/h` : null },
+                    { k: 'Fuel Efficiency', v: car.specs.mpg ? `${car.specs.mpg} km/l` : null },
+                    { k: 'Acceleration', v: car.specs.acceleration },
+                    { k: 'Trunk Capacity', v: car.specs.trunk_capacity },
+                  ].filter(item => item.v).map((item, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderBottom: '1px solid #f3f4f6', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
+                      <span style={{ fontSize: '.85rem', color: '#6b7280' }}>{item.k}</span>
+                      <span style={{ fontSize: '.85rem', fontWeight: 600, color: '#111827' }}>{String(item.v)}</span>
                     </div>
-                  )}
-                  {car.specs.engine_size && (
-                    <div>
-                      <p className="text-xs md:text-sm text-gray-600">Engine Size</p>
-                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.engine_size}</p>
-                    </div>
-                  )}
-                  {car.specs.doors && (
-                    <div>
-                      <p className="text-xs md:text-sm text-gray-600">Doors</p>
-                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.doors}</p>
-                    </div>
-                  )}
-                  {car.specs.seats && (
-                    <div>
-                      <p className="text-xs md:text-sm text-gray-600">Seats</p>
-                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.seats}</p>
-                    </div>
-                  )}
-                  {car.specs.trunk_capacity && (
-                    <div>
-                      <p className="text-xs md:text-sm text-gray-600">Trunk Capacity</p>
-                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.trunk_capacity}</p>
-                    </div>
-                  )}
-                  {car.specs.mpg && (
-                    <div>
-                      <p className="text-xs md:text-sm text-gray-600">Km/L</p>
-                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.mpg} km/l</p>
-                    </div>
-                  )}
-                  {car.specs.acceleration && (
-                    <div>
-                      <p className="text-xs md:text-sm text-gray-600">Acceleration (0-100)</p>
-                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.acceleration}</p>
-                    </div>
-                  )}
-                  {car.specs.top_speed && (
-                    <div>
-                      <p className="text-xs md:text-sm text-gray-600">Top Speed</p>
-                      <p className="text-base md:text-lg font-bold text-gray-900">{car.specs.top_speed} km/h</p>
-                    </div>
-                  )}
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Similar Cars */}
+            {similarCars.length > 0 && (
+              <div style={{ background: '#fff', borderRadius: 16, padding: '20px', boxShadow: '0 2px 12px rgba(0,0,0,.06)' }}>
+                <h2 style={{ fontWeight: 700, fontSize: '1.05rem', color: '#111827', marginBottom: 14 }}>Similar {car.make} Vehicles</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14 }}>
+                  {similarCars.map(sc => (
+                    <Link key={sc.id} href={`/cars/${sc.id}`} style={{ display: 'block', background: '#f9fafb', borderRadius: 10, overflow: 'hidden', border: '1px solid #f3f4f6', textDecoration: 'none', transition: 'box-shadow .2s' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 12px rgba(0,0,0,.1)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = 'none'}>
+                      <div style={{ height: 110, background: '#e5e7eb', overflow: 'hidden' }}>
+                        {sc.images?.[0] && <img src={sc.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                      </div>
+                      <div style={{ padding: '10px 12px' }}>
+                        <div style={{ fontWeight: 700, fontSize: '.82rem', color: '#111827' }}>{sc.year} {sc.make} {sc.model}</div>
+                        <div style={{ fontWeight: 700, fontSize: '.85rem', color: '#1b3a6b', marginTop: 4 }}>Rs. {sc.price.toLocaleString()}</div>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Sidebar */}
-          <div className="lg:col-span-1">
-            {/* Price & Details */}
-            <div className="bg-white rounded-lg shadow p-4 md:p-6 sticky top-24">
-              <p className="text-3xl md:text-4xl font-bold text-indigo-600 mb-4">
+          {/* RIGHT — Sticky Sidebar */}
+          <div>
+            <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 12px rgba(0,0,0,.08)', position: 'sticky', top: 80 }}>
+              {/* Title + Price */}
+              <h1 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#111827', marginBottom: 6 }}>
+                {car.year} {car.make} {car.model}
+              </h1>
+              {car.category && (
+                <span style={{ display: 'inline-block', background: '#f3f4f6', color: '#374151', fontSize: '.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: 999, textTransform: 'capitalize', marginBottom: 14 }}>
+                  {car.category}
+                </span>
+              )}
+              <div style={{ fontWeight: 900, fontSize: '1.8rem', color: '#e8612c', marginBottom: 20 }}>
                 Rs. {car.price.toLocaleString()}
-              </p>
-
-              <div className="space-y-2 md:space-y-3 mb-4 md:mb-6 pb-4 md:pb-6 border-b">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm md:text-base">Year:</span>
-                  <span className="font-semibold text-gray-900 text-sm md:text-base">{car.year}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm md:text-base">Make:</span>
-                  <span className="font-semibold text-gray-900 text-sm md:text-base">{car.make}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm md:text-base">Model:</span>
-                  <span className="font-semibold text-gray-900 text-sm md:text-base">{car.model}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm md:text-base">Color:</span>
-                  <span className="font-semibold text-gray-900 text-sm md:text-base">{car.color}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm md:text-base">Mileage:</span>
-                  <span className="font-semibold text-gray-900 text-sm md:text-base">{car.mileage.toLocaleString()} km</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm md:text-base">Condition:</span>
-                  <span className="font-semibold text-gray-900 text-sm md:text-base capitalize">{car.condition}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm md:text-base">Fuel Type:</span>
-                  <span className="font-semibold text-gray-900 text-sm md:text-base capitalize">{car.fuelType}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600 text-sm md:text-base">Transmission:</span>
-                  <span className="font-semibold text-gray-900 text-sm md:text-base capitalize">{car.transmission}</span>
-                </div>
-                {car.category && (
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600 text-sm md:text-base">Category:</span>
-                    <span className="font-semibold text-gray-900 text-sm md:text-base capitalize">{car.category}</span>
-                  </div>
-                )}
               </div>
 
-              {/* Buttons */}
-              <div className="space-y-2 md:space-y-3">
-                <button
-                  onClick={() => setShowContactForm(!showContactForm)}
-                  className="w-full bg-indigo-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg font-semibold hover:bg-indigo-700 transition text-sm md:text-base"
-                >
-                  Contact Seller
+              {/* Quick specs */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #f3f4f6' }}>
+                {[
+                  { icon: '📅', label: 'Year', val: car.year },
+                  { icon: '📏', label: 'Km', val: car.mileage ? `${(car.mileage/1000).toFixed(0)}k` : '—' },
+                  { icon: '⛽', label: 'Fuel', val: car.fuelType || '—' },
+                  { icon: '⚙️', label: 'Trans.', val: car.transmission?.[0]?.toUpperCase() || '—' },
+                ].map((s, i) => (
+                  <div key={i} style={{ background: '#f9fafb', borderRadius: 8, padding: '10px', textAlign: 'center', border: '1px solid #f3f4f6' }}>
+                    <div style={{ fontSize: '1rem' }}>{s.icon}</div>
+                    <div style={{ fontSize: '.7rem', color: '#6b7280' }}>{s.label}</div>
+                    <div style={{ fontWeight: 700, fontSize: '.85rem', color: '#111827' }}>{s.val}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button onClick={() => setShowContactForm(true)}
+                  style={{ background: '#1b3a6b', color: '#fff', padding: '14px', borderRadius: 10, fontWeight: 700, fontSize: '.95rem', transition: 'background .2s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#112649')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '#1b3a6b')}>
+                  📞 Contact Seller
                 </button>
-                <button
-                  onClick={() => router.push(`/compare?cars=${carId}`)}
-                  className="w-full bg-gray-200 text-gray-900 px-4 md:px-6 py-2 md:py-3 rounded-lg font-semibold hover:bg-gray-300 transition text-sm md:text-base"
-                >
-                  Compare
-                </button>
-                <button
-                  onClick={toggleWishlist}
-                  className={`w-full px-4 md:px-6 py-2 md:py-3 rounded-lg font-semibold transition border-2 text-sm md:text-base ${
-                    isInWishlist
-                      ? 'bg-red-50 border-red-600 text-red-600 hover:bg-red-100'
-                      : 'bg-white border-gray-300 text-gray-700 hover:border-red-600 hover:text-red-600'
-                  }`}
-                >
-                  {isInWishlist ? '♥ Saved' : '♡ Save'}
-                </button>
+                <a href={`https://wa.me/923001234567?text=I'm interested in the ${car.year} ${car.make} ${car.model} listed at Rs. ${car.price.toLocaleString()}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ display: 'block', background: '#25d366', color: '#fff', padding: '14px', borderRadius: 10, fontWeight: 700, fontSize: '.95rem', textAlign: 'center', textDecoration: 'none' }}>
+                  💬 WhatsApp
+                </a>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <button onClick={toggleWishlist}
+                    style={{ padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: '.85rem', border: `2px solid ${isInWishlist ? '#e8612c' : '#e5e7eb'}`, background: isInWishlist ? '#fff5f0' : '#fff', color: isInWishlist ? '#e8612c' : '#374151', transition: 'all .2s' }}>
+                    {isInWishlist ? '❤️ Saved' : '🤍 Save'}
+                  </button>
+                  <button onClick={() => router.push(`/compare?cars=${carId}`)}
+                    style={{ padding: '10px', borderRadius: 10, fontWeight: 600, fontSize: '.85rem', border: '2px solid #e5e7eb', background: '#fff', color: '#374151', transition: 'all .2s' }}
+                    onMouseEnter={e => { (e.currentTarget.style.borderColor = '#1b3a6b'); (e.currentTarget.style.color = '#1b3a6b'); }}
+                    onMouseLeave={e => { (e.currentTarget.style.borderColor = '#e5e7eb'); (e.currentTarget.style.color = '#374151'); }}>
+                    ⚖️ Compare
+                  </button>
+                </div>
+              </div>
+
+              {/* Location */}
+              <div style={{ marginTop: 18, padding: '12px', background: '#f9fafb', borderRadius: 10, fontSize: '.82rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: 8 }}>
+                📍 <span>Lahore, Punjab, Pakistan</span>
               </div>
             </div>
-
-            {/* Contact Form Modal */}
-            {showContactForm && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-gray-900/60 backdrop-blur-sm transition-all duration-300">
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
-                  <div className="relative px-6 py-5 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-white">
-                    <h3 className="text-xl font-bold text-gray-900">Contact Seller</h3>
-                    <p className="text-sm text-gray-500 mt-1">We'll get back to you as soon as possible.</p>
-                    <button 
-                      onClick={() => setShowContactForm(false)}
-                      className="absolute top-5 right-5 text-gray-400 hover:text-gray-700 transition-colors bg-white rounded-full p-1.5 shadow-sm hover:shadow border border-gray-100"
-                    >
-                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  
-                  <div className="p-6">
-                    <form onSubmit={handleContactSubmit} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Your Name</label>
-                        <input
-                          type="text"
-                          value={contactForm.name}
-                          onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
-                          required
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-900 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none"
-                          placeholder="John Doe"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-                        <input
-                          type="email"
-                          value={contactForm.email}
-                          onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
-                          required
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-900 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none"
-                          placeholder="john@example.com"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone Number <span className="text-gray-400 font-normal">(Optional)</span></label>
-                        <input
-                          type="tel"
-                          value={contactForm.phone}
-                          onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-900 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none"
-                          placeholder="+1 (555) 000-0000"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Message</label>
-                        <textarea
-                          value={contactForm.message}
-                          onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
-                          required
-                          rows={4}
-                          className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-gray-900 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 outline-none resize-none"
-                          placeholder="I'm interested in this vehicle..."
-                        />
-                      </div>
-
-                      {messageStatus === 'success' && (
-                        <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm font-medium flex items-center animate-in fade-in slide-in-from-bottom-2">
-                          <svg className="w-5 h-5 mr-2 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                          Message sent successfully!
-                        </div>
-                      )}
-                      
-                      {messageStatus === 'error' && (
-                        <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm font-medium flex items-center animate-in fade-in slide-in-from-bottom-2">
-                          <svg className="w-5 h-5 mr-2 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                          Error sending message. Please try again.
-                        </div>
-                      )}
-
-                      <button
-                        type="submit"
-                        disabled={sendingMessage}
-                        className="w-full relative flex items-center justify-center bg-indigo-600 text-white px-4 py-3.5 rounded-xl font-semibold hover:bg-indigo-700 transition-all duration-200 disabled:bg-indigo-400 shadow-[0_4px_14px_0_rgb(79,70,229,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.23)] hover:-translate-y-0.5 mt-4"
-                      >
-                        {sendingMessage ? (
-                          <>
-                            <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Sending...
-                          </>
-                        ) : 'Send Message'}
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {/* Contact Modal */}
+      {showContactForm && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: '#fff', borderRadius: 20, width: '100%', maxWidth: 460, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,.25)' }}>
+            <div style={{ background: 'linear-gradient(135deg, #1b3a6b, #2a5298)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem' }}>Contact Seller</h3>
+                <p style={{ color: 'rgba(255,255,255,.75)', fontSize: '.82rem', marginTop: 2 }}>We'll respond as soon as possible</p>
+              </div>
+              <button onClick={() => setShowContactForm(false)} style={{ color: 'rgba(255,255,255,.8)', fontSize: '1.3rem', width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,255,255,.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            </div>
+            <form onSubmit={handleContactSubmit} style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { label: 'Your Name', key: 'name', type: 'text', placeholder: 'John Doe', required: true },
+                { label: 'Email Address', key: 'email', type: 'email', placeholder: 'john@example.com', required: true },
+                { label: 'Phone Number (Optional)', key: 'phone', type: 'tel', placeholder: '+92 300 1234567', required: false },
+              ].map(f => (
+                <div key={f.key}>
+                  <label style={{ display: 'block', fontSize: '.82rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>{f.label}</label>
+                  <input className="form-input" type={f.type} placeholder={f.placeholder} required={f.required}
+                    value={contactForm[f.key as keyof typeof contactForm]}
+                    onChange={e => setContactForm({ ...contactForm, [f.key]: e.target.value })} />
+                </div>
+              ))}
+              <div>
+                <label style={{ display: 'block', fontSize: '.82rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Message</label>
+                <textarea className="form-input" rows={3} required placeholder={`I'm interested in this ${car.year} ${car.make} ${car.model}...`}
+                  value={contactForm.message} onChange={e => setContactForm({ ...contactForm, message: e.target.value })}
+                  style={{ resize: 'none' }} />
+              </div>
+              {messageStatus === 'success' && <div style={{ background: '#f0fdf4', color: '#16a34a', padding: '10px 14px', borderRadius: 8, fontSize: '.85rem', fontWeight: 600 }}>✅ Message sent successfully!</div>}
+              {messageStatus === 'error' && <div style={{ background: '#fef2f2', color: '#dc2626', padding: '10px 14px', borderRadius: 8, fontSize: '.85rem', fontWeight: 600 }}>❌ Error sending. Please try again.</div>}
+              <button type="submit" disabled={sendingMessage}
+                style={{ background: '#1b3a6b', color: '#fff', padding: '13px', borderRadius: 10, fontWeight: 700, fontSize: '.95rem', opacity: sendingMessage ? .7 : 1 }}>
+                {sendingMessage ? 'Sending...' : 'Send Message'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        .detail-layout { grid-template-columns: 1fr 340px !important; }
+        @media (max-width: 900px) {
+          .detail-layout { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }

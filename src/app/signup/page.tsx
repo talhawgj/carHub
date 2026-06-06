@@ -2,21 +2,25 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/authContext';
 
 export default function SignupPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [fullName, setFullName] = useState('');
+  const [cnic, setCnic] = useState('');
+  
+  const [otp, setOtp] = useState('');
+  const [step, setStep] = useState<'details' | 'otp'>('details');
+  
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const { user, signUp } = useAuth();
+  
+  const { user, signUp, verifyPhoneOtp } = useAuth();
   const router = useRouter();
 
-  // Only render after mount to avoid hydration issues
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -24,28 +28,47 @@ export default function SignupPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (mounted && user) {
-      router.push('/admin');
+      router.push('/');
     }
   }, [user, router, mounted]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    
+    // Basic CNIC validation (13 digits)
+    const cleanCnic = cnic.replace(/\D/g, '');
+    if (cleanCnic.length !== 13) {
+      setError('Please enter a valid 13-digit CNIC number.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await signUp(phone, fullName, cleanCnic);
+      setStep('otp');
+    } catch (err: any) {
+      setError(err.message || 'Failed to send OTP. This phone number might already be registered.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      await signUp(email, password, fullName);
+      await verifyPhoneOtp(phone, otp);
       setSuccess(true);
-      setEmail('');
-      setPassword('');
-      setFullName('');
       
       // Redirect after a short delay
       setTimeout(() => {
-        router.push('/login');
+        router.push('/dashboard');
       }, 2000);
     } catch (err: any) {
-      setError(err.message || 'Failed to sign up');
+      setError(err.message || 'Invalid OTP code. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -53,17 +76,11 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-        <div className="w-full max-w-md">
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-            <div className="text-4xl mb-4">✅</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Account Created!
-            </h2>
-            <p className="text-gray-600 mb-4">
-              Your account has been created successfully. Redirecting to login...
-            </p>
-          </div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f7fa', padding: '2rem 1rem' }}>
+        <div style={{ background: '#fff', width: '100%', maxWidth: 420, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,.08)', padding: '40px 24px', textAlign: 'center' }}>
+          <div style={{ fontSize: '4rem', marginBottom: 16 }}>✅</div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111827', marginBottom: 8 }}>Account Verified!</h2>
+          <p style={{ color: '#4b5563', fontSize: '.95rem' }}>Your phone number has been verified. Redirecting to your dashboard...</p>
         </div>
       </div>
     );
@@ -71,116 +88,139 @@ export default function SignupPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-          <p className="text-gray-600 mt-4">Loading...</p>
-        </div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f7fa' }}>
+        <div className="spinner" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 px-4">
-      <div className="w-full max-w-md">
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">
-            Create Account
-          </h1>
-          <p className="text-gray-600 text-center mb-8">
-            Property Management Admin
-          </p>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f7fa', padding: '2rem 1rem' }}>
+      <div style={{ background: '#fff', width: '100%', maxWidth: 420, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,.08)', overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ background: '#1b3a6b', padding: '24px', textAlign: 'center' }}>
+          <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+            <div style={{ width: 32, height: 32, background: '#e8612c', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="12" viewBox="0 0 22 16" fill="none">
+                <path d="M3 10L5.5 4H16.5L19 10" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"/>
+                <rect x="1" y="10" width="20" height="4" rx="2" fill="#fff"/>
+                <circle cx="5" cy="14" r="1.5" fill="#e8612c"/>
+                <circle cx="17" cy="14" r="1.5" fill="#e8612c"/>
+              </svg>
+            </div>
+            <span style={{ color: '#fff', fontWeight: 800, fontSize: '1.25rem' }}>CarMandi</span>
+          </Link>
+          <p style={{ color: 'rgba(255,255,255,.8)', fontSize: '.85rem', marginTop: 8 }}>Join Pakistan's first online car auction</p>
+        </div>
 
+        {/* Form */}
+        <div style={{ padding: '32px 24px' }}>
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700 text-sm">{error}</p>
+            <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '12px 16px', borderRadius: 8, fontSize: '.85rem', fontWeight: 600, marginBottom: 20 }}>
+              {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition text-gray-900 bg-white"
-                placeholder="John Doe"
-                autoComplete="name"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition text-gray-900 bg-white"
-                placeholder="admin@example.com"
-                autoComplete="email"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <div className="relative">
+          {step === 'details' ? (
+            <form onSubmit={handleSendOtp} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Full Name</label>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   required
-                  className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition text-gray-900 bg-white"
-                  placeholder="••••••••"
-                  autoComplete="new-password"
+                  className="form-input"
+                  placeholder="e.g., Ali Khan"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                >
-                  {showPassword ? (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M3.707 2.293a1 1 0 00-1.414 1.414l14 14a1 1 0 001.414-1.414l-1.473-1.473A10.014 10.014 0 0019.542 10C18.268 5.943 14.478 3 10 3a9.958 9.958 0 00-5.68 1.74l-1.613-1.613zm2.16 2.16a8 8 0 1011.062 11.062l-11.062-11.062zM15 10a5 5 0 11-10 0 5 5 0 0110 0z" clipRule="evenodd" />
-                    </svg>
-                  )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>CNIC Number</label>
+                <input
+                  type="text"
+                  value={cnic}
+                  onChange={(e) => {
+                    // Simple formatting for CNIC: 00000-0000000-0
+                    const val = e.target.value.replace(/\D/g, '');
+                    let formatted = val;
+                    if (val.length > 5 && val.length <= 12) {
+                      formatted = `${val.slice(0, 5)}-${val.slice(5)}`;
+                    } else if (val.length > 12) {
+                      formatted = `${val.slice(0, 5)}-${val.slice(5, 12)}-${val.slice(12, 13)}`;
+                    }
+                    setCnic(formatted);
+                  }}
+                  required
+                  maxLength={15}
+                  className="form-input"
+                  placeholder="00000-0000000-0"
+                />
+                <p style={{ fontSize: '.75rem', color: '#6b7280', marginTop: 6 }}>Required for identity verification</p>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Phone Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  className="form-input"
+                  placeholder="+92 300 1234567"
+                />
+                <p style={{ fontSize: '.75rem', color: '#6b7280', marginTop: 6 }}>You will receive an OTP via SMS/WhatsApp</p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary"
+                style={{ width: '100%', marginTop: 8, padding: 12, background: '#1b3a6b', opacity: loading ? 0.7 : 1 }}
+              >
+                {loading ? 'Sending OTP...' : 'Continue & Verify'}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ textAlign: 'center', marginBottom: 8 }}>
+                <p style={{ fontSize: '.9rem', color: '#4b5563' }}>Enter the 6-digit code sent to</p>
+                <p style={{ fontSize: '1rem', fontWeight: 700, color: '#111827' }}>{phone}</p>
+                <button type="button" onClick={() => setStep('details')} style={{ color: '#e8612c', fontSize: '.85rem', fontWeight: 600, marginTop: 4, textDecoration: 'underline' }}>
+                  Edit details
                 </button>
               </div>
-              <p className="text-xs text-gray-600 mt-1">
-                At least 6 characters
-              </p>
-            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold py-2 px-4 rounded-lg transition duration-200"
-            >
-              {loading ? 'Creating account...' : 'Sign Up'}
-            </button>
-          </form>
+              <div>
+                <label style={{ display: 'block', fontSize: '.85rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>OTP Code</label>
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  required
+                  maxLength={6}
+                  className="form-input"
+                  placeholder="123456"
+                  style={{ textAlign: 'center', letterSpacing: '0.25em', fontSize: '1.2rem', fontWeight: 700 }}
+                />
+              </div>
 
-          <p className="text-gray-600 text-sm text-center mt-4">
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary"
+                style={{ width: '100%', marginTop: 8, padding: 12, background: '#1b3a6b', opacity: loading ? 0.7 : 1 }}
+              >
+                {loading ? 'Verifying...' : 'Verify & Create Account'}
+              </button>
+            </form>
+          )}
+
+          <p style={{ textAlign: 'center', marginTop: 24, fontSize: '.9rem', color: '#4b5563' }}>
             Already have an account?{' '}
-            <a
-              href="/login"
-              className="text-indigo-600 hover:text-indigo-700 font-medium"
-            >
+            <Link href="/login" style={{ color: '#e8612c', fontWeight: 600, textDecoration: 'none' }}>
               Sign in here
-            </a>
+            </Link>
           </p>
         </div>
       </div>
